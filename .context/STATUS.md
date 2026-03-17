@@ -1,38 +1,46 @@
 # STATUS — ERPNext México
 
-## Estado: 🟡 Sprint 0 — Fundación (EN PROGRESO)
+## Estado: 🟢 Sprint 0 — Fundación (COMPLETADO)
 **Fecha**: 2026-03-16
 **Sprint**: 0 de 6
-**Progreso**: 75% (código creado, pendiente: bench install + CI push)
+**Progreso**: 100%
 
-## Completado en esta sesión
-- Git init + .gitignore + LICENSE GPL-3.0
-- 4 DocTypes de configuración (CFDI module): Settings, Certificate, PAC Credentials, Log
-- 15 DocTypes de catálogos SAT (SAT Catalogs module)
-- 11 fixtures JSON con datos reales del SAT
-- catalog_importer.py (satcfdi.catalogs → DocTypes)
-- Chart of Accounts mexicano (mexico_standard.json)
-- Tax Templates: IVA 16%, 0%, exento, ISR ret 10%, IVA ret 10.6667%, combinados
-- install.py actualizado: carga fixtures + tax templates
-- 20 tests unitarios pasando (RFC validator + catalog fixtures)
-- CI/CD: GitHub Actions (lint + tests) + .pre-commit-config.yaml
-- modules.txt: ERPNext Mexico, CFDI, SAT Catalogs
+## Completado
+- Git repo + GitHub (github.com/MarxCha/erpnext-mexico)
+- 4 DocTypes configuración (CFDI): Settings, Certificate, PAC Credentials, Log
+- 15 DocTypes catálogos SAT con fixtures (99 registros reales)
+- catalog_importer.py (satcfdi.catalogs + fixtures JSON)
+- 42 custom fields mx_* en 8 DocTypes de ERPNext
+- Chart of Accounts mexicano + 6 tax templates
+- CFDI XML builder + Multi-PAC strategy (Finkok, SW Sapien)
+- RFC validator con dígito verificador
+- 20 tests unitarios pasando
+- CI/CD: GitHub Actions + pre-commit
+- Entorno Frappe v15 + ERPNext v15 local funcionando
+- bench install-app + bench migrate sin errores
+- Catálogos SAT cargados y verificados en BD
 
-## Próximo paso
-- Resolver BLOCKER-004: configurar Frappe v15 local
-- `bench install-app erpnext_mexico` + `bench migrate`
-- Validar custom fields visibles en formularios
-- Push a GitHub + activar CI
+## Validación End-to-End
+- DocTypes: 19/19
+- Custom Fields: 42/42
+- Catálogos: 11/11 (99 registros)
+- MX CFDI Settings: 14 campos, 4 tabs
+- bench migrate: sin errores
 
-## Métricas
-- DocTypes creados: 19 / 19 ✅
-- Custom Fields: definidos en install.py (pendiente validar en bench)
-- Catálogos SAT fixtures: 11 / 11 ✅
-- Tests pasando: 20 / 20 ✅
-- Cobertura: RFC validator + fixtures (standalone, sin Frappe)
+## Entorno Local
+- Frappe 15.102.1 + ERPNext 15.101.0
+- MariaDB 12.2.2 + Redis (Homebrew)
+- Python 3.11.15 + Node 20.19.6
+- Bench path: /Users/Marx/Projects/frappe-bench
+- Site: dev.localhost (admin/admin123)
 
-## Dependencias externas
-- [🔴] Entorno Frappe local (BLOCKER-004) — bloquea validación end-to-end
+## Próximo: Sprint 1 — CFDI Core
+- Firmar XML con CSD (satcfdi.Signer)
+- Timbrar via Finkok sandbox
+- Flujo Sales Invoice → CFDI timbrado
+- Cancelación CFDI
+- Tests de integración con PAC
+
+## Blockers para Sprint 1
 - [🔴] CSD prueba SAT EKU9003173C9 (BLOCKER-002)
-- [🟡] Sandbox Finkok (BLOCKER-001, no bloquea Sprint 0)
-- [✅] Catálogos SAT (BLOCKER-003 resuelto)
+- [🟡] Sandbox Finkok (BLOCKER-001)
