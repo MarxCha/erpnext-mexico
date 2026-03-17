@@ -42,3 +42,14 @@ htmlcov/
 # Misc
 node_modules/
 *.log
+
+# Screenshots / design research
+*.jpeg
+*.jpg
+*.png
+
+# CSD certificates (sensitive)
+csd_pruebas/
+
+# Playwright
+.playwright-mcp/

@@ -252,6 +252,56 @@ CUSTOM_FIELDS = {
             insert_after="mx_cancellation_reason",
             depends_on="eval:doc.mx_cancellation_reason=='01'",
         ),
+        # ── Timbre Fiscal Digital (datos del PAC) ──
+        dict(
+            fieldname="mx_cfdi_fecha_timbrado",
+            label="Fecha de Timbrado",
+            fieldtype="Datetime",
+            read_only=1,
+            insert_after="mx_substitute_uuid",
+        ),
+        dict(
+            fieldname="mx_no_certificado",
+            label="No. Certificado Emisor",
+            fieldtype="Data",
+            read_only=1,
+            insert_after="mx_cfdi_fecha_timbrado",
+        ),
+        dict(
+            fieldname="mx_no_certificado_sat",
+            label="No. Certificado SAT",
+            fieldtype="Data",
+            read_only=1,
+            insert_after="mx_no_certificado",
+        ),
+        dict(
+            fieldname="mx_sello_cfdi",
+            label="Sello Digital CFDI",
+            fieldtype="Long Text",
+            read_only=1,
+            insert_after="mx_no_certificado_sat",
+        ),
+        dict(
+            fieldname="mx_sello_sat",
+            label="Sello SAT",
+            fieldtype="Long Text",
+            read_only=1,
+            insert_after="mx_sello_cfdi",
+        ),
+        dict(
+            fieldname="mx_cadena_original_tfd",
+            label="Cadena Original del TFD",
+            fieldtype="Long Text",
+            read_only=1,
+            insert_after="mx_sello_sat",
+        ),
+        dict(
+            fieldname="mx_serie",
+            label="Serie CFDI",
+            fieldtype="Data",
+            length=25,
+            insert_after="mx_cadena_original_tfd",
+        ),
     ],
     # ── Sales Invoice Item ──
     "Sales Invoice Item": [
@@ -363,6 +413,7 @@ def after_install():
     create_custom_fields(CUSTOM_FIELDS, update=True)
     setup_tax_templates()
     import_small_catalogs()
+    install_print_formats()
     frappe.db.commit()
     frappe.msgprint("ERPNext México instalado correctamente. Configure su PAC en MX CFDI Settings.")
 
@@ -427,6 +478,52 @@ def import_small_catalogs():
                 )
 
         frappe.db.commit()
+
+
+def install_print_formats():
+    """Instala print formats CFDI desde fixtures JSON.
+    Lee todos los archivos print_formats/**/*.json y crea/actualiza
+    los registros de Print Format en la base de datos.
+    """
+    import json
+    import os
+
+    pf_base = os.path.join(os.path.dirname(__file__), "setup", "print_formats")
+    if not os.path.exists(pf_base):
+        return
+
+    for root, _dirs, files in os.walk(pf_base):
+        for filename in files:
+            if not filename.endswith(".json") or filename.startswith("_"):
+                continue
+            filepath = os.path.join(root, filename)
+            with open(filepath) as f:
+                records = json.load(f)
+
+            if not isinstance(records, list):
+                records = [records]
+
+            for rec in records:
+                if rec.get("doctype") != "Print Format":
+                    continue
+                name = rec.get("name")
+                if not name:
+                    continue
+                try:
+                    if frappe.db.exists("Print Format", name):
+                        doc = frappe.get_doc("Print Format", name)
+                        doc.update(rec)
+                        doc.save(ignore_permissions=True)
+                    else:
+                        doc = frappe.get_doc(rec)
+                        doc.flags.ignore_permissions = True
+                        doc.insert()
+                    frappe.db.commit()
+                except Exception as e:
+                    frappe.log_error(
+                        f"Error installing Print Format '{name}': {e}",
+                        title="Print Format Install Error",
+                    )
 
 
 def create_payroll_custom_fields():

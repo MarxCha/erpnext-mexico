@@ -1,0 +1,379 @@
+<div class="cfdi-print">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+
+        .cfdi-print {
+            font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif;
+            color: #1A1D26;
+            max-width: 800px;
+            margin: 0 auto;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        /* ── Header ─────────────────────────────── */
+        .cfdi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #0052CC;
+            margin-bottom: 16px;
+        }
+        .cfdi-header__company { flex: 1; }
+        .cfdi-header__company img { max-height: 52px; margin-bottom: 8px; display: block; }
+        .cfdi-header__company h2 {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            margin: 0 0 4px;
+            color: #1A1D26;
+        }
+        .cfdi-header__fiscal { font-size: 12px; color: #6B7280; line-height: 1.6; }
+
+        .cfdi-header__cfdi { text-align: right; min-width: 180px; }
+        .cfdi-tipo {
+            background: #0052CC;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-weight: 700;
+            font-size: 12px;
+            display: inline-block;
+            margin-bottom: 8px;
+            letter-spacing: 0.3px;
+        }
+        .cfdi-folio {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            color: #1A1D26;
+        }
+        .cfdi-fecha { font-size: 11px; color: #6B7280; margin-top: 2px; }
+        .cfdi-pago-meta { margin-top: 6px; font-size: 11px; color: #374151; }
+
+        /* ── Receptor ────────────────────────────── */
+        .cfdi-receptor {
+            background: #F8F9FB;
+            border-radius: 8px;
+            padding: 14px 16px;
+            margin-bottom: 16px;
+        }
+        .cfdi-receptor h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 13px;
+            font-weight: 700;
+            margin: 0 0 8px;
+            color: #0052CC;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cfdi-receptor__grid {
+            display: grid;
+            grid-template-columns: 120px 1fr 120px 1fr;
+            gap: 4px 16px;
+            font-size: 12px;
+        }
+        .cfdi-receptor__label { color: #6B7280; }
+        .cfdi-receptor__value { font-weight: 500; color: #1A1D26; }
+
+        /* ── Items table ─────────────────────────── */
+        .cfdi-items {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 12px;
+        }
+        .cfdi-items th {
+            background: #1A1D26;
+            color: #fff;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+        }
+        .cfdi-items th.text-right,
+        .cfdi-items td.text-right { text-align: right; }
+        .cfdi-items tbody tr:nth-child(even) { background: #F8F9FB; }
+        .cfdi-items td {
+            padding: 7px 10px;
+            border-bottom: 1px solid #E5E7EB;
+            color: #1A1D26;
+            vertical-align: top;
+        }
+        .sat-key {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 11px;
+            color: #0052CC;
+        }
+        .item-desc { color: #374151; }
+        .item-desc small { display: block; color: #9CA3AF; font-size: 10px; margin-top: 1px; }
+
+        /* ── Totals ──────────────────────────────── */
+        .cfdi-totals { display: flex; justify-content: flex-end; margin-bottom: 20px; }
+        .cfdi-totals__table { width: 300px; font-size: 13px; border-collapse: collapse; }
+        .cfdi-totals__table td { padding: 4px 0; }
+        .cfdi-totals__table td:last-child { text-align: right; }
+        .cfdi-totals__table .subtotal-row td { color: #6B7280; }
+        .cfdi-totals__table .tax-row td { color: #374151; }
+        .cfdi-totals__table .total-row td {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            font-size: 16px;
+            border-top: 2px solid #1A1D26;
+            padding-top: 8px;
+            color: #1A1D26;
+        }
+        .cfdi-amount-words {
+            font-size: 11px;
+            color: #6B7280;
+            font-style: italic;
+            text-align: right;
+            margin-top: 4px;
+        }
+
+        /* ── Stamp / Timbre ──────────────────────── */
+        .cfdi-stamp {
+            background: #F1F3F9;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 16px;
+            font-size: 10px;
+        }
+        .cfdi-stamp h3 {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 12px;
+            font-weight: 700;
+            margin: 0 0 10px;
+            color: #0052CC;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .cfdi-stamp__uuid {
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            font-size: 13px;
+            font-weight: 700;
+            color: #1A1D26;
+            letter-spacing: 0.3px;
+            margin-bottom: 10px;
+            word-break: break-all;
+        }
+        .cfdi-stamp__body { display: flex; gap: 16px; align-items: flex-start; }
+        .cfdi-stamp__fields { flex: 1; }
+        .cfdi-stamp__field { margin-bottom: 5px; }
+        .cfdi-stamp__label { color: #6B7280; font-weight: 600; display: inline-block; min-width: 110px; }
+        .cfdi-stamp__value {
+            word-break: break-all;
+            font-family: 'SFMono-Regular', Consolas, monospace;
+            color: #374151;
+        }
+        .cfdi-stamp__qr { text-align: center; flex-shrink: 0; }
+        .cfdi-stamp__qr img { width: 110px; height: 110px; display: block; }
+        .cfdi-stamp__qr small { display: block; font-size: 9px; color: #9CA3AF; margin-top: 3px; }
+
+        /* ── Footer ──────────────────────────────── */
+        .cfdi-footer {
+            margin-top: 16px;
+            padding-top: 12px;
+            border-top: 1px solid #E5E7EB;
+            font-size: 10px;
+            color: #9CA3AF;
+            text-align: center;
+            line-height: 1.6;
+        }
+        .cfdi-footer strong { color: #6B7280; }
+    </style>
+
+    {%- set company_doc = frappe.get_cached_doc("Company", doc.company) -%}
+    {%- set customer_doc = frappe.get_cached_doc("Customer", doc.customer) if doc.customer else None -%}
+
+    {%- set mx_rfc_emisor = company_doc.get("mx_rfc") or "" -%}
+    {%- set mx_regimen_emisor = company_doc.get("mx_regimen_fiscal") or "" -%}
+    {%- set mx_cp_emisor = company_doc.get("mx_lugar_expedicion") or "" -%}
+    {%- set mx_nombre_fiscal = company_doc.get("mx_nombre_fiscal") or doc.company -%}
+    {%- set company_logo = company_doc.get("company_logo") or "" -%}
+
+    {%- set mx_rfc_receptor = "" -%}
+    {%- set mx_regimen_receptor = "" -%}
+    {%- set mx_cp_receptor = "" -%}
+    {%- if customer_doc -%}
+        {%- set mx_rfc_receptor = customer_doc.get("mx_rfc") or "" -%}
+        {%- set mx_regimen_receptor = customer_doc.get("mx_regimen_fiscal") or "" -%}
+        {%- set mx_cp_receptor = customer_doc.get("mx_domicilio_fiscal_cp") or "" -%}
+    {%- endif -%}
+
+    <!-- ── HEADER ──────────────────────────────────── -->
+    <div class="cfdi-header">
+        <div class="cfdi-header__company">
+            {% if company_logo %}
+            <img src="{{ company_logo }}" alt="Logo">
+            {% endif %}
+            <h2>{{ mx_nombre_fiscal }}</h2>
+            <div class="cfdi-header__fiscal">
+                <strong>RFC:</strong> {{ mx_rfc_emisor }}<br>
+                {% if mx_regimen_emisor %}<strong>Régimen:</strong> {{ mx_regimen_emisor }}<br>{% endif %}
+                {% if mx_cp_emisor %}<strong>Lugar de expedición (CP):</strong> {{ mx_cp_emisor }}{% endif %}
+            </div>
+        </div>
+        <div class="cfdi-header__cfdi">
+            <span class="cfdi-tipo">CFDI 4.0 — Factura</span><br>
+            <div class="cfdi-folio">
+                {% if doc.mx_serie %}{{ doc.mx_serie }}&nbsp;{% endif %}{{ doc.name }}
+            </div>
+            <div class="cfdi-fecha">{{ doc.posting_date }}</div>
+            {% if doc.mx_metodo_pago or doc.mx_forma_pago %}
+            <div class="cfdi-pago-meta">
+                {% if doc.mx_metodo_pago %}<strong>Método:</strong> {{ doc.mx_metodo_pago }}{% endif %}
+                {% if doc.mx_forma_pago %} &nbsp;|&nbsp; <strong>Forma:</strong> {{ doc.mx_forma_pago }}{% endif %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ── RECEPTOR ────────────────────────────────── -->
+    <div class="cfdi-receptor">
+        <h3>Receptor</h3>
+        <div class="cfdi-receptor__grid">
+            <span class="cfdi-receptor__label">Cliente</span>
+            <span class="cfdi-receptor__value">{{ doc.customer_name }}</span>
+            <span class="cfdi-receptor__label">RFC</span>
+            <span class="cfdi-receptor__value">{{ mx_rfc_receptor or "—" }}</span>
+
+            <span class="cfdi-receptor__label">Régimen fiscal</span>
+            <span class="cfdi-receptor__value">{{ mx_regimen_receptor or "—" }}</span>
+            <span class="cfdi-receptor__label">Domicilio fiscal (CP)</span>
+            <span class="cfdi-receptor__value">{{ mx_cp_receptor or "—" }}</span>
+
+            <span class="cfdi-receptor__label">Uso CFDI</span>
+            <span class="cfdi-receptor__value">{{ doc.mx_uso_cfdi or "—" }}</span>
+            <span class="cfdi-receptor__label">Moneda</span>
+            <span class="cfdi-receptor__value">{{ doc.currency or "MXN" }}</span>
+        </div>
+    </div>
+
+    <!-- ── CONCEPTOS ───────────────────────────────── -->
+    <table class="cfdi-items">
+        <thead>
+            <tr>
+                <th style="width:90px;">Clave SAT</th>
+                <th>Descripción</th>
+                <th style="width:70px;">Clave Unidad</th>
+                <th class="text-right" style="width:60px;">Cant.</th>
+                <th class="text-right" style="width:90px;">P. Unitario</th>
+                <th class="text-right" style="width:100px;">Importe</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in doc.items %}
+            <tr>
+                <td class="sat-key">{{ item.get("mx_clave_prod_serv") or "—" }}</td>
+                <td class="item-desc">
+                    {{ item.item_name or item.description }}
+                    {% if item.get("mx_no_identificacion") %}
+                    <small>No. ID: {{ item.mx_no_identificacion }}</small>
+                    {% endif %}
+                </td>
+                <td class="sat-key">{{ item.get("mx_clave_unidad") or item.uom }}</td>
+                <td class="text-right">{{ item.qty | float | round(2) }}</td>
+                <td class="text-right">{{ frappe.format(item.rate, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
+                <td class="text-right">{{ frappe.format(item.amount, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <!-- ── TOTALES ─────────────────────────────────── -->
+    <div class="cfdi-totals">
+        <div>
+            <table class="cfdi-totals__table">
+                <tr class="subtotal-row">
+                    <td>Subtotal</td>
+                    <td>{{ frappe.format(doc.net_total, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
+                </tr>
+                {% for tax in doc.taxes %}
+                <tr class="tax-row">
+                    <td>{{ tax.description }}</td>
+                    <td>{{ frappe.format(tax.tax_amount, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
+                </tr>
+                {% endfor %}
+                {% if doc.discount_amount and doc.discount_amount > 0 %}
+                <tr class="tax-row">
+                    <td>Descuento</td>
+                    <td>-{{ frappe.format(doc.discount_amount, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
+                </tr>
+                {% endif %}
+                <tr class="total-row">
+                    <td>Total</td>
+                    <td>{{ frappe.format(doc.grand_total, {"fieldtype": "Currency", "currency": doc.currency}) }}&nbsp;{{ doc.currency }}</td>
+                </tr>
+            </table>
+            <div class="cfdi-amount-words">
+                {{ amount_to_words_mx(doc.grand_total, doc.currency) }}
+            </div>
+        </div>
+    </div>
+
+    <!-- ── TIMBRE FISCAL DIGITAL ───────────────────── -->
+    {% if doc.get("mx_cfdi_uuid") %}
+    <div class="cfdi-stamp">
+        <h3>Timbre Fiscal Digital — SAT</h3>
+        <div class="cfdi-stamp__uuid">{{ doc.mx_cfdi_uuid }}</div>
+        <div class="cfdi-stamp__body">
+            <div class="cfdi-stamp__fields">
+                <div class="cfdi-stamp__field">
+                    <span class="cfdi-stamp__label">Fecha timbrado:</span>
+                    <span>{{ doc.get("mx_cfdi_fecha_timbrado") or doc.mx_cfdi_status or "—" }}</span>
+                </div>
+                <div class="cfdi-stamp__field">
+                    <span class="cfdi-stamp__label">No. Cert. SAT:</span>
+                    <span class="cfdi-stamp__value">{{ doc.get("mx_no_certificado_sat") or "—" }}</span>
+                </div>
+                <div class="cfdi-stamp__field">
+                    <span class="cfdi-stamp__label">No. Cert. Emisor:</span>
+                    <span class="cfdi-stamp__value">{{ doc.get("mx_no_certificado") or "—" }}</span>
+                </div>
+                {% if doc.get("mx_sello_cfdi") %}
+                <div class="cfdi-stamp__field" style="margin-top:6px;">
+                    <span class="cfdi-stamp__label">Sello CFDI:</span><br>
+                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_cfdi[:80] }}...</span>
+                </div>
+                {% endif %}
+                {% if doc.get("mx_sello_sat") %}
+                <div class="cfdi-stamp__field" style="margin-top:4px;">
+                    <span class="cfdi-stamp__label">Sello SAT:</span><br>
+                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_sat[:80] }}...</span>
+                </div>
+                {% endif %}
+                {% if doc.get("mx_cadena_original_tfd") %}
+                <div class="cfdi-stamp__field" style="margin-top:6px;">
+                    <span class="cfdi-stamp__label">Cadena original TFD:</span><br>
+                    <span class="cfdi-stamp__value" style="font-size:9px; word-break:break-all;">{{ doc.mx_cadena_original_tfd[:120] }}...</span>
+                </div>
+                {% endif %}
+            </div>
+            <div class="cfdi-stamp__qr">
+                <img
+                    src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ 'https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=' ~ doc.mx_cfdi_uuid ~ '&re=' ~ mx_rfc_emisor ~ '&rr=' ~ mx_rfc_receptor ~ '&tt=' ~ (doc.grand_total | string) ~ '&fe=' ~ (doc.get('mx_sello_cfdi') or '')[-8:] | urlencode }}"
+                    alt="QR Verificación SAT"
+                >
+                <small>Verificar en SAT</small>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="cfdi-stamp" style="border: 2px dashed #E5E7EB; background: #FAFAFA;">
+        <h3 style="color: #9CA3AF;">Sin Timbre Fiscal Digital</h3>
+        <p style="color: #9CA3AF; font-size: 11px; margin: 0;">Este documento aún no ha sido timbrado por el SAT.</p>
+    </div>
+    {% endif %}
+
+    <!-- ── FOOTER ──────────────────────────────────── -->
+    <div class="cfdi-footer">
+        <strong>Este documento es la representación impresa de un Comprobante Fiscal Digital por Internet (CFDI).</strong><br>
+        Verifique la autenticidad en:
+        <strong>https://verificacfdi.facturaelectronica.sat.gob.mx</strong><br>
+        Generado con ERPNext México — MD Consultoría SC
+    </div>
+</div>
