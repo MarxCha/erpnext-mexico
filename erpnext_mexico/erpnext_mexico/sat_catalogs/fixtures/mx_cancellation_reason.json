@@ -1,0 +1,6 @@
+[
+  {"doctype": "MX Cancellation Reason", "code": "01", "description": "Comprobante emitido con errores con relación"},
+  {"doctype": "MX Cancellation Reason", "code": "02", "description": "Comprobante emitido con errores sin relación"},
+  {"doctype": "MX Cancellation Reason", "code": "03", "description": "No se llevó a cabo la operación"},
+  {"doctype": "MX Cancellation Reason", "code": "04", "description": "Operación nominativa relacionada en una factura global"}
+]

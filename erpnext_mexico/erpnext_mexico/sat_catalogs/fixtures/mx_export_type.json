@@ -1,0 +1,6 @@
+[
+  {"doctype": "MX Export Type", "code": "01", "description": "No aplica"},
+  {"doctype": "MX Export Type", "code": "02", "description": "Definitiva"},
+  {"doctype": "MX Export Type", "code": "03", "description": "Temporal"},
+  {"doctype": "MX Export Type", "code": "04", "description": "Definitiva con clave A1"}
+]

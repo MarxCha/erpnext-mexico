@@ -1,0 +1,76 @@
+{
+ "actions": [],
+ "autoname": "field:code",
+ "creation": "2026-03-16 10:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "code",
+  "description",
+  "persona_type"
+ ],
+ "fields": [
+  {
+   "fieldname": "code",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "C\u00f3digo",
+   "reqd": 1,
+   "set_only_once": 1,
+   "unique": 1
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Descripci\u00f3n",
+   "reqd": 1
+  },
+  {
+   "fieldname": "persona_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "in_standard_filter": 1,
+   "label": "Tipo Persona",
+   "options": "\nF\u00edsica\nMoral\nAmbas"
+  }
+ ],
+ "in_create": 1,
+ "links": [],
+ "modified": "2026-03-16 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "SAT Catalogs",
+ "name": "MX Fiscal Regime",
+ "naming_rule": "By fieldname",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "write": 1
+  },
+  {
+   "export": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager"
+  },
+  {
+   "read": 1,
+   "role": "Accounts User"
+  }
+ ],
+ "quick_entry": 1,
+ "search_fields": "description",
+ "show_title_field_in_link": 1,
+ "sort_field": "code",
+ "sort_order": "ASC",
+ "title_field": "description",
+ "track_changes": 0
+}

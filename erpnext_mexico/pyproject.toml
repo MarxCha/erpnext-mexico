@@ -1,0 +1,25 @@
+[project]
+name = "erpnext-mexico"
+version = "0.1.0"
+description = "Localización fiscal mexicana completa para ERPNext — CFDI 4.0, Nómina, DIOT, Carta Porte, Contabilidad Electrónica"
+authors = [
+    {name = "MD Consultoría SC", email = "contacto@mdconsultoria-ti.com"}
+]
+readme = "README.md"
+license = {text = "GPL-3.0"}
+requires-python = ">=3.11"
+dependencies = [
+    "satcfdi>=4.8.0",
+]
+
+[build-system]
+requires = ["flit_core >=3.2,<4"]
+build-backend = "flit_core.buildapi"
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

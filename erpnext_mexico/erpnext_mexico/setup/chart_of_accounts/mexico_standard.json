@@ -1,0 +1,151 @@
+{
+  "name": "Mexico - Plan de Cuentas Estándar",
+  "country_code": "mx",
+  "tree": {
+    "Activo": {
+      "root_type": "Asset",
+      "is_group": 1,
+      "children": {
+        "Activo Circulante": {
+          "is_group": 1,
+          "children": {
+            "Caja y Bancos": {
+              "account_number": "1010",
+              "is_group": 1,
+              "children": {
+                "Caja": {"account_number": "1010.01"},
+                "Bancos": {"account_number": "1010.02"}
+              }
+            },
+            "Clientes": {
+              "account_number": "1020",
+              "account_type": "Receivable"
+            },
+            "Documentos por Cobrar": {"account_number": "1030"},
+            "Deudores Diversos": {"account_number": "1040"},
+            "Anticipo a Proveedores": {"account_number": "1050"},
+            "IVA Acreditable": {"account_number": "1060"},
+            "IVA por Acreditar": {"account_number": "1061"},
+            "Subsidio al Empleo por Aplicar": {"account_number": "1070"},
+            "Pagos Provisionales ISR": {"account_number": "1080"},
+            "Inventarios": {"account_number": "1090", "account_type": "Stock"}
+          }
+        },
+        "Activo Fijo": {
+          "is_group": 1,
+          "children": {
+            "Terrenos": {"account_number": "1110", "account_type": "Fixed Asset"},
+            "Edificios": {"account_number": "1120", "account_type": "Fixed Asset"},
+            "Maquinaria y Equipo": {"account_number": "1130", "account_type": "Fixed Asset"},
+            "Equipo de Transporte": {"account_number": "1140", "account_type": "Fixed Asset"},
+            "Mobiliario y Equipo de Oficina": {"account_number": "1150", "account_type": "Fixed Asset"},
+            "Equipo de Cómputo": {"account_number": "1160", "account_type": "Fixed Asset"},
+            "Depreciación Acumulada": {"account_number": "1170", "account_type": "Depreciation"}
+          }
+        }
+      }
+    },
+    "Pasivo": {
+      "root_type": "Liability",
+      "is_group": 1,
+      "children": {
+        "Pasivo Circulante": {
+          "is_group": 1,
+          "children": {
+            "Proveedores": {
+              "account_number": "2010",
+              "account_type": "Payable"
+            },
+            "Documentos por Pagar": {"account_number": "2020"},
+            "Acreedores Diversos": {"account_number": "2030"},
+            "Anticipo de Clientes": {"account_number": "2040"},
+            "IVA Trasladado": {"account_number": "2050"},
+            "IVA por Trasladar": {"account_number": "2051"},
+            "ISR Retenido por Pagar": {"account_number": "2060"},
+            "IVA Retenido por Pagar": {"account_number": "2061"},
+            "IMSS por Pagar": {"account_number": "2070"},
+            "INFONAVIT por Pagar": {"account_number": "2071"},
+            "ISR por Pagar": {"account_number": "2080"},
+            "PTU por Pagar": {"account_number": "2090"},
+            "Sueldos y Salarios por Pagar": {"account_number": "2100"}
+          }
+        },
+        "Pasivo a Largo Plazo": {
+          "is_group": 1,
+          "children": {
+            "Préstamos Bancarios": {"account_number": "2210"},
+            "Hipotecas por Pagar": {"account_number": "2220"}
+          }
+        }
+      }
+    },
+    "Capital Contable": {
+      "root_type": "Equity",
+      "is_group": 1,
+      "children": {
+        "Capital Social": {"account_number": "3010"},
+        "Reserva Legal": {"account_number": "3020"},
+        "Resultado de Ejercicios Anteriores": {"account_number": "3030"},
+        "Resultado del Ejercicio": {"account_number": "3040"}
+      }
+    },
+    "Ingresos": {
+      "root_type": "Income",
+      "is_group": 1,
+      "children": {
+        "Ventas": {"account_number": "4010", "account_type": "Income Account"},
+        "Devoluciones sobre Ventas": {"account_number": "4020"},
+        "Descuentos sobre Ventas": {"account_number": "4030"},
+        "Otros Ingresos": {"account_number": "4040", "account_type": "Income Account"},
+        "Ingresos Financieros": {"account_number": "4050"}
+      }
+    },
+    "Costos y Gastos": {
+      "root_type": "Expense",
+      "is_group": 1,
+      "children": {
+        "Costo de Ventas": {
+          "account_number": "5010",
+          "is_group": 1,
+          "account_type": "Cost of Goods Sold",
+          "children": {
+            "Costo de Ventas - Productos": {"account_number": "5010.01"},
+            "Costo de Ventas - Servicios": {"account_number": "5010.02"}
+          }
+        },
+        "Gastos de Operación": {
+          "account_number": "6010",
+          "is_group": 1,
+          "children": {
+            "Sueldos y Salarios": {"account_number": "6010.01"},
+            "Gratificaciones": {"account_number": "6010.02"},
+            "IMSS Patronal": {"account_number": "6010.03"},
+            "INFONAVIT Patronal": {"account_number": "6010.04"},
+            "Cuotas SAR": {"account_number": "6010.05"},
+            "Impuesto Estatal sobre Nómina": {"account_number": "6010.06"},
+            "PTU": {"account_number": "6010.07"},
+            "Honorarios": {"account_number": "6010.08"},
+            "Renta de Oficina": {"account_number": "6010.09"},
+            "Servicios Públicos": {"account_number": "6010.10"},
+            "Papelería y Artículos de Oficina": {"account_number": "6010.11"},
+            "Mantenimiento": {"account_number": "6010.12"},
+            "Seguros y Fianzas": {"account_number": "6010.13"},
+            "Viáticos y Gastos de Viaje": {"account_number": "6010.14"},
+            "Gastos de Representación": {"account_number": "6010.15"},
+            "Depreciación": {"account_number": "6010.16", "account_type": "Depreciation"},
+            "Otros Gastos": {"account_number": "6010.99"}
+          }
+        },
+        "Gastos Financieros": {
+          "account_number": "7010",
+          "is_group": 1,
+          "children": {
+            "Intereses Pagados": {"account_number": "7010.01"},
+            "Comisiones Bancarias": {"account_number": "7010.02"},
+            "Pérdida Cambiaria": {"account_number": "7010.03"}
+          }
+        }
+      }
+    }
+  }
+}

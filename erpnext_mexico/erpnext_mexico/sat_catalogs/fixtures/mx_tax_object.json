@@ -1,0 +1,6 @@
+[
+  {"doctype": "MX Tax Object", "code": "01", "description": "No objeto de impuesto"},
+  {"doctype": "MX Tax Object", "code": "02", "description": "Sí objeto de impuesto"},
+  {"doctype": "MX Tax Object", "code": "03", "description": "Sí objeto del impuesto y no obligado al desglose"},
+  {"doctype": "MX Tax Object", "code": "04", "description": "Sí objeto del impuesto y no causa impuesto"}
+]

@@ -1,0 +1,5 @@
+[
+  {"doctype": "MX Tax Factor Type", "code": "Tasa", "description": "Tasa"},
+  {"doctype": "MX Tax Factor Type", "code": "Cuota", "description": "Cuota"},
+  {"doctype": "MX Tax Factor Type", "code": "Exento", "description": "Exento"}
+]

@@ -1,0 +1,7 @@
+[
+  {"doctype": "MX Voucher Type", "code": "I", "description": "Ingreso"},
+  {"doctype": "MX Voucher Type", "code": "E", "description": "Egreso"},
+  {"doctype": "MX Voucher Type", "code": "T", "description": "Traslado"},
+  {"doctype": "MX Voucher Type", "code": "N", "description": "Nómina"},
+  {"doctype": "MX Voucher Type", "code": "P", "description": "Pago"}
+]

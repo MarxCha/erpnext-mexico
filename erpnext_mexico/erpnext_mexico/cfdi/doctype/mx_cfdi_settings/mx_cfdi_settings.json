@@ -1,0 +1,147 @@
+{
+ "actions": [],
+ "creation": "2026-03-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "tab_general",
+  "company",
+  "auto_stamp_on_submit",
+  "auto_cancel_on_cancel",
+  "tab_pac",
+  "pac_provider",
+  "pac_environment",
+  "pac_credentials",
+  "tab_certificados",
+  "default_certificate",
+  "tab_avanzado",
+  "validate_xml_before_stamp",
+  "keep_xml_files",
+  "log_level"
+ ],
+ "fields": [
+  {
+   "fieldname": "tab_general",
+   "fieldtype": "Tab Break",
+   "label": "General"
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Empresa",
+   "options": "Company"
+  },
+  {
+   "default": "1",
+   "description": "Timbrar autom\u00e1ticamente al hacer Submit",
+   "fieldname": "auto_stamp_on_submit",
+   "fieldtype": "Check",
+   "label": "Timbrar al Confirmar"
+  },
+  {
+   "default": "0",
+   "description": "Cancelar CFDI al cancelar documento",
+   "fieldname": "auto_cancel_on_cancel",
+   "fieldtype": "Check",
+   "label": "Cancelar CFDI al Cancelar"
+  },
+  {
+   "fieldname": "tab_pac",
+   "fieldtype": "Tab Break",
+   "label": "PAC"
+  },
+  {
+   "fieldname": "pac_provider",
+   "fieldtype": "Select",
+   "label": "Proveedor de Certificaci\u00f3n",
+   "options": "\nFinkok\nSW Sapien"
+  },
+  {
+   "default": "Sandbox",
+   "fieldname": "pac_environment",
+   "fieldtype": "Select",
+   "label": "Ambiente",
+   "options": "\nSandbox\nProduction"
+  },
+  {
+   "depends_on": "pac_provider",
+   "fieldname": "pac_credentials",
+   "fieldtype": "Link",
+   "label": "Credenciales PAC",
+   "options": "MX PAC Credentials"
+  },
+  {
+   "fieldname": "tab_certificados",
+   "fieldtype": "Tab Break",
+   "label": "Certificados"
+  },
+  {
+   "fieldname": "default_certificate",
+   "fieldtype": "Link",
+   "label": "Certificado Digital por Defecto",
+   "options": "MX Digital Certificate"
+  },
+  {
+   "fieldname": "tab_avanzado",
+   "fieldtype": "Tab Break",
+   "label": "Avanzado"
+  },
+  {
+   "default": "1",
+   "fieldname": "validate_xml_before_stamp",
+   "fieldtype": "Check",
+   "label": "Validar XML Antes de Timbrar"
+  },
+  {
+   "default": "1",
+   "fieldname": "keep_xml_files",
+   "fieldtype": "Check",
+   "label": "Conservar Archivos XML"
+  },
+  {
+   "default": "Info",
+   "fieldname": "log_level",
+   "fieldtype": "Select",
+   "label": "Nivel de Log",
+   "options": "\nError\nWarning\nInfo\nDebug"
+  }
+ ],
+ "issingle": 1,
+ "is_virtual": 0,
+ "custom": 0,
+ "links": [],
+ "modified": "2026-03-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "CFDI",
+ "name": "MX CFDI Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "track_changes": 0
+}

@@ -1,0 +1,21 @@
+[
+  {"doctype": "MX Fiscal Regime", "code": "601", "description": "General de Ley Personas Morales", "persona_type": "Moral"},
+  {"doctype": "MX Fiscal Regime", "code": "603", "description": "Personas Morales con Fines no Lucrativos", "persona_type": "Moral"},
+  {"doctype": "MX Fiscal Regime", "code": "605", "description": "Sueldos y Salarios e Ingresos Asimilados a Salarios", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "606", "description": "Arrendamiento", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "607", "description": "Régimen de Enajenación o Adquisición de Bienes", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "608", "description": "Demás ingresos", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "610", "description": "Residentes en el Extranjero sin Establecimiento Permanente en México", "persona_type": "Ambas"},
+  {"doctype": "MX Fiscal Regime", "code": "611", "description": "Ingresos por Dividendos (socios y accionistas)", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "612", "description": "Personas Físicas con Actividades Empresariales y Profesionales", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "614", "description": "Ingresos por intereses", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "615", "description": "Régimen de los ingresos por obtención de premios", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "616", "description": "Sin obligaciones fiscales", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "620", "description": "Sociedades Cooperativas de Producción que optan por diferir sus ingresos", "persona_type": "Moral"},
+  {"doctype": "MX Fiscal Regime", "code": "621", "description": "Incorporación Fiscal", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "622", "description": "Actividades Agrícolas, Ganaderas, Silvícolas y Pesqueras", "persona_type": "Ambas"},
+  {"doctype": "MX Fiscal Regime", "code": "623", "description": "Opcional para Grupos de Sociedades", "persona_type": "Moral"},
+  {"doctype": "MX Fiscal Regime", "code": "624", "description": "Coordinados", "persona_type": "Moral"},
+  {"doctype": "MX Fiscal Regime", "code": "625", "description": "Régimen de las Actividades Empresariales con ingresos a través de Plataformas Tecnológicas", "persona_type": "Física"},
+  {"doctype": "MX Fiscal Regime", "code": "626", "description": "Régimen Simplificado de Confianza", "persona_type": "Ambas"}
+]

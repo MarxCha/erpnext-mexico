@@ -1,0 +1,5 @@
+[
+  {"doctype": "MX Tax Type", "code": "001", "description": "ISR"},
+  {"doctype": "MX Tax Type", "code": "002", "description": "IVA"},
+  {"doctype": "MX Tax Type", "code": "003", "description": "IEPS"}
+]

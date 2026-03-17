@@ -1,0 +1,11 @@
+[
+  {"doctype": "MX Relation Type", "code": "01", "description": "Nota de crédito de los documentos relacionados"},
+  {"doctype": "MX Relation Type", "code": "02", "description": "Nota de débito de los documentos relacionados"},
+  {"doctype": "MX Relation Type", "code": "03", "description": "Devolución de mercancía sobre facturas o traslados previos"},
+  {"doctype": "MX Relation Type", "code": "04", "description": "Sustitución de los CFDI previos"},
+  {"doctype": "MX Relation Type", "code": "05", "description": "Traslados de mercancías facturados previamente"},
+  {"doctype": "MX Relation Type", "code": "06", "description": "Factura generada por los traslados previos"},
+  {"doctype": "MX Relation Type", "code": "07", "description": "CFDI por aplicación de anticipo"},
+  {"doctype": "MX Relation Type", "code": "08", "description": "Factura generada por pagos en parcialidades"},
+  {"doctype": "MX Relation Type", "code": "09", "description": "Factura generada por pagos diferidos"}
+]

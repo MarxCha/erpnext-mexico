@@ -1,0 +1,162 @@
+{
+ "actions": [],
+ "autoname": "MX-CFDI-.#####",
+ "creation": "2026-03-16 00:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "reference_doctype",
+  "reference_name",
+  "section_cfdi_info",
+  "cfdi_type",
+  "uuid",
+  "status",
+  "column_break_cfdi_info",
+  "pac_used",
+  "stamped_at",
+  "cancelled_at",
+  "section_xml",
+  "xml_signed",
+  "xml_stamped",
+  "section_errors",
+  "error_message",
+  "error_details"
+ ],
+ "fields": [
+  {
+   "fieldname": "reference_doctype",
+   "fieldtype": "Link",
+   "label": "Tipo de Documento",
+   "options": "DocType",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "reference_name",
+   "fieldtype": "Dynamic Link",
+   "label": "Documento",
+   "options": "reference_doctype",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "section_cfdi_info",
+   "fieldtype": "Section Break"
+  },
+  {
+   "fieldname": "cfdi_type",
+   "fieldtype": "Select",
+   "label": "Tipo CFDI",
+   "options": "\nI\nE\nT\nN\nP",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "uuid",
+   "fieldtype": "Data",
+   "label": "UUID (Folio Fiscal)",
+   "unique": 1,
+   "in_list_view": 1
+  },
+  {
+   "default": "Pending",
+   "fieldname": "status",
+   "fieldtype": "Select",
+   "label": "Estado",
+   "options": "\nPending\nStamped\nCancelled\nError",
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "column_break_cfdi_info",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "pac_used",
+   "fieldtype": "Data",
+   "label": "PAC Utilizado"
+  },
+  {
+   "fieldname": "stamped_at",
+   "fieldtype": "Datetime",
+   "label": "Fecha Timbrado"
+  },
+  {
+   "fieldname": "cancelled_at",
+   "fieldtype": "Datetime",
+   "label": "Fecha Cancelaci\u00f3n"
+  },
+  {
+   "fieldname": "section_xml",
+   "fieldtype": "Section Break",
+   "label": "XML"
+  },
+  {
+   "fieldname": "xml_signed",
+   "fieldtype": "Code",
+   "label": "XML Firmado",
+   "options": "XML"
+  },
+  {
+   "fieldname": "xml_stamped",
+   "fieldtype": "Code",
+   "label": "XML Timbrado",
+   "options": "XML"
+  },
+  {
+   "fieldname": "section_errors",
+   "fieldtype": "Section Break",
+   "label": "Errores"
+  },
+  {
+   "fieldname": "error_message",
+   "fieldtype": "Small Text",
+   "label": "Mensaje de Error"
+  },
+  {
+   "fieldname": "error_details",
+   "fieldtype": "Code",
+   "label": "Detalle del Error"
+  }
+ ],
+ "in_create": 1,
+ "issingle": 0,
+ "is_virtual": 0,
+ "custom": 0,
+ "links": [],
+ "modified": "2026-03-16 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "CFDI",
+ "name": "MX CFDI Log",
+ "naming_rule": "Autoincrement",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  },
+  {
+   "create": 1,
+   "delete": 0,
+   "email": 1,
+   "export": 1,
+   "print": 1,
+   "read": 1,
+   "report": 1,
+   "role": "Accounts Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "title_field": "uuid",
+ "track_changes": 1
+}

@@ -1,0 +1,4 @@
+[
+  {"doctype": "MX Payment Method", "code": "PUE", "description": "Pago en una sola exhibición"},
+  {"doctype": "MX Payment Method", "code": "PPD", "description": "Pago en parcialidades o diferido"}
+]
