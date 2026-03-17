@@ -63,15 +63,15 @@ doctype_js = {
 fixtures = [
     {
         "dt": "Custom Field",
-        "filters": [["module", "=", "ERPNext Mexico"]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
     },
     {
         "dt": "Property Setter",
-        "filters": [["module", "=", "ERPNext Mexico"]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
     },
     {
         "dt": "Print Format",
-        "filters": [["module", "=", "ERPNext Mexico"]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
     },
 ]
 

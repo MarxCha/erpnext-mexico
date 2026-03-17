@@ -1,3 +1,2 @@
-ERPNext Mexico
 CFDI
 SAT Catalogs
