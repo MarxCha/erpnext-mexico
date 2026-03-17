@@ -34,7 +34,7 @@ class PACDispatcher:
         Raises:
             frappe.ValidationError si el PAC no está configurado o registrado.
         """
-        settings = frappe.get_cached_doc("MX CFDI Settings", {"company": company})
+        settings = frappe.get_single("MX CFDI Settings")
 
         if not settings.pac_provider:
             frappe.throw(
@@ -62,9 +62,9 @@ class PACDispatcher:
         credentials = frappe.get_doc("MX PAC Credentials", settings.pac_credentials)
 
         return cls._registry[pac_name](
-            username=credentials.username,
-            password=credentials.get_password("password"),
-            environment=settings.pac_environment or "Test",
+            username=credentials.pac_username,
+            password=credentials.get_password("pac_password"),
+            environment=settings.pac_environment or "Sandbox",
         )
 
     @classmethod

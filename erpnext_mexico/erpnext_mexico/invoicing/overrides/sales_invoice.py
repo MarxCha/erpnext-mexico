@@ -134,7 +134,7 @@ def retry_stamp(sales_invoice_name: str) -> None:
 
 @frappe.whitelist()
 def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "") -> None:
-    """Cancelar CFDI ante el SAT (llamado desde botón en UI)."""
+    """Cancelar CFDI ante el SAT."""
     doc = frappe.get_doc("Sales Invoice", sales_invoice_name)
     doc.check_permission("cancel")
 
@@ -144,11 +144,51 @@ def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "")
     if reason == "01" and not substitute_uuid:
         frappe.throw(_("Motivo 01 requiere UUID del CFDI sustituto"))
 
-    # TODO: Implementar cancelación vía PAC
-    frappe.msgprint(
-        _("Cancelación CFDI en desarrollo. Motivo: {0}").format(reason),
-        title=_("Próximamente"),
-    )
+    from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
+    from erpnext_mexico.cfdi.xml_builder import _get_active_certificate, _get_file_bytes
+
+    try:
+        pac = PACDispatcher.get_pac(doc.company)
+        certificate = _get_active_certificate(doc.company)
+
+        result = pac.cancel(
+            uuid=doc.mx_cfdi_uuid,
+            rfc_emisor=frappe.db.get_value("Company", doc.company, "mx_rfc"),
+            certificate=_get_file_bytes(certificate.certificate_file),
+            key=_get_file_bytes(certificate.key_file),
+            password=certificate.get_password("key_password"),
+            reason=reason,
+            substitute_uuid=substitute_uuid if reason == "01" else None,
+        )
+
+        if result.success:
+            doc.db_set("mx_cfdi_status", "Cancelado", update_modified=False)
+            doc.db_set("mx_cancellation_reason", reason, update_modified=False)
+            if substitute_uuid:
+                doc.db_set("mx_substitute_uuid", substitute_uuid, update_modified=False)
+
+            # Update CFDI Log
+            log_name = frappe.db.get_value("MX CFDI Log", {"uuid": doc.mx_cfdi_uuid}, "name")
+            if log_name:
+                frappe.db.set_value("MX CFDI Log", log_name, {
+                    "status": "Cancelled",
+                    "cancelled_at": frappe.utils.now(),
+                })
+
+            frappe.msgprint(
+                _("CFDI cancelado exitosamente."),
+                title=_("Cancelación exitosa"),
+                indicator="green",
+            )
+        else:
+            frappe.throw(
+                _("Error al cancelar CFDI: {0}").format(result.error_message),
+                title=_("Error de cancelación"),
+            )
+
+    except Exception as e:
+        frappe.log_error(f"Error cancelando CFDI {doc.mx_cfdi_uuid}: {e}")
+        frappe.throw(_("Error al cancelar CFDI: {0}").format(str(e)))
 
 
 # ── Helpers ──
@@ -160,10 +200,10 @@ def _is_mexico_company(company: str) -> bool:
 
 
 def _get_cfdi_settings(company: str):
-    """Obtiene MX CFDI Settings para la empresa, o None si no existe."""
+    """Obtiene MX CFDI Settings (Single DocType), o None si no está configurado."""
     try:
-        return frappe.get_cached_doc("MX CFDI Settings", {"company": company})
-    except frappe.DoesNotExistError:
+        return frappe.get_single("MX CFDI Settings")
+    except Exception:
         return None
 
 
@@ -204,8 +244,6 @@ def _create_cfdi_log(doc, result, cfdi_type: str) -> None:
         "uuid": result.uuid,
         "status": "Stamped",
         "xml_stamped": result.xml_stamped,
-        "pac_used": frappe.db.get_value(
-            "MX CFDI Settings", {"company": doc.company}, "pac_provider"
-        ),
+        "pac_used": frappe.db.get_single_value("MX CFDI Settings", "pac_provider"),
         "stamped_at": result.fecha_timbrado,
     }).insert(ignore_permissions=True)
