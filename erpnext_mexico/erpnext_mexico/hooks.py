@@ -9,6 +9,11 @@ app_logo_url = "/assets/erpnext_mexico/images/logo.png"
 required_apps = ["frappe/erpnext"]
 
 # ─────────────────────────────────────────────
+# Static assets — CSS / JS incluidos globalmente
+# ─────────────────────────────────────────────
+app_include_css = "/assets/erpnext_mexico/css/erpnext_mexico.css"
+
+# ─────────────────────────────────────────────
 # Lifecycle hooks
 # ─────────────────────────────────────────────
 after_install = "erpnext_mexico.install.after_install"

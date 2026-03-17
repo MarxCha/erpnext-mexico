@@ -1,0 +1,17 @@
+{
+  "creation": "2026-03-17 00:00:00.000000",
+  "doctype": "Page",
+  "modified": "2026-03-17 00:00:00.000000",
+  "modified_by": "Administrator",
+  "module": "CFDI",
+  "name": "mx-setup-wizard",
+  "owner": "Administrator",
+  "page_name": "mx-setup-wizard",
+  "roles": [
+    {"role": "System Manager"},
+    {"role": "Accounts Manager"}
+  ],
+  "standard": "Yes",
+  "system_page": 0,
+  "title": "Configuración Fiscal MX"
+}
