@@ -68,15 +68,15 @@ doctype_js = {
 fixtures = [
     {
         "dt": "Custom Field",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
     },
     {
         "dt": "Property Setter",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
     },
     {
         "dt": "Print Format",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs"]]],
+        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
     },
 ]
 

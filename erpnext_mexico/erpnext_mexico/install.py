@@ -292,11 +292,19 @@ CUSTOM_FIELDS = {
             insert_after="amended_from",
         ),
         dict(
+            fieldname="mx_forma_pago",
+            label="Forma de Pago SAT",
+            fieldtype="Link",
+            options="MX Payment Form",
+            insert_after="mx_payment_cfdi_section",
+            description="Catálogo c_FormaPago del SAT. Requerido para el Complemento de Pagos 2.0",
+        ),
+        dict(
             fieldname="mx_pago_uuid",
             label="UUID Complemento de Pago",
             fieldtype="Data",
             read_only=1,
-            insert_after="mx_payment_cfdi_section",
+            insert_after="mx_forma_pago",
         ),
         dict(
             fieldname="mx_pago_xml",
@@ -307,7 +315,7 @@ CUSTOM_FIELDS = {
         ),
         dict(
             fieldname="mx_pago_status",
-            label="Estado",
+            label="Estado Complemento",
             fieldtype="Select",
             options="\nPendiente\nTimbrado\nError\nNo aplica",
             read_only=1,
