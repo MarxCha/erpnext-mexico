@@ -412,8 +412,11 @@ def import_small_catalogs():
                 doc.insert()
             except frappe.DuplicateEntryError:
                 pass
-            except Exception:
-                pass
+            except Exception as e:
+                frappe.log_error(
+                    f"Error loading {rec.get('code', '?')} into {doctype}: {e}",
+                    title="Catalog Fixture Import Error",
+                )
 
         frappe.db.commit()
 
