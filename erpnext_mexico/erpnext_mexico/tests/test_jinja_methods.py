@@ -24,6 +24,10 @@ from unittest.mock import MagicMock
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _install_stubs():
+    # Skip stubs if running inside Frappe bench (real modules available)
+    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
+        return
+
     if "frappe" not in sys.modules:
         frappe_stub = types.ModuleType("frappe")
         frappe_stub._ = lambda s: s

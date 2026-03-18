@@ -43,6 +43,9 @@ class _FakeCancelReason(Enum):
 
 def _install_stubs():
     """Register lightweight stubs for frappe and satcfdi.pacs.swsapien."""
+    # Skip stubs if running inside Frappe bench (real modules available)
+    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
+        return
 
     # -- frappe stub ----------------------------------------------------------
     frappe_stub = types.ModuleType("frappe")
@@ -156,35 +159,33 @@ from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher  # noqa: E402
 class TestMapEnvironment(unittest.TestCase):
     """Tests for _map_environment helper."""
 
+    def _assert_env(self, result, expected_name):
+        """Compare environment by name to work with both real and fake enums."""
+        self.assertEqual(result.name, expected_name)
+
     def test_sandbox_string_returns_test(self):
         """'Sandbox' must map to Environment.TEST."""
-        result = _map_environment("Sandbox")
-        self.assertEqual(result, _FakeEnvironment.TEST)
+        self._assert_env(_map_environment("Sandbox"), "TEST")
 
     def test_sandbox_lowercase_returns_test(self):
         """Case-insensitive: 'sandbox' must also return TEST."""
-        result = _map_environment("sandbox")
-        self.assertEqual(result, _FakeEnvironment.TEST)
+        self._assert_env(_map_environment("sandbox"), "TEST")
 
     def test_test_string_returns_test(self):
         """Alternate alias 'test' must also return Environment.TEST."""
-        result = _map_environment("test")
-        self.assertEqual(result, _FakeEnvironment.TEST)
+        self._assert_env(_map_environment("test"), "TEST")
 
     def test_production_string_returns_production(self):
         """'Production' must map to Environment.PRODUCTION."""
-        result = _map_environment("Production")
-        self.assertEqual(result, _FakeEnvironment.PRODUCTION)
+        self._assert_env(_map_environment("Production"), "PRODUCTION")
 
     def test_production_uppercase_returns_production(self):
         """Case-insensitive: 'PRODUCTION' must return PRODUCTION."""
-        result = _map_environment("PRODUCTION")
-        self.assertEqual(result, _FakeEnvironment.PRODUCTION)
+        self._assert_env(_map_environment("PRODUCTION"), "PRODUCTION")
 
     def test_unknown_string_defaults_to_production(self):
         """Any unrecognized string must default to PRODUCTION (safe default)."""
-        result = _map_environment("live")
-        self.assertEqual(result, _FakeEnvironment.PRODUCTION)
+        self._assert_env(_map_environment("live"), "PRODUCTION")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -194,25 +195,25 @@ class TestMapEnvironment(unittest.TestCase):
 class TestMapCancelReason(unittest.TestCase):
     """Tests for _map_cancel_reason helper."""
 
+    def _assert_reason(self, result, expected_name):
+        """Compare cancel reason by name to work with both real and fake enums."""
+        self.assertEqual(result.name, expected_name)
+
     def test_motivo_01_maps_correctly(self):
         """Motivo '01' → COMPROBANTE_EMITIDO_CON_ERRORES_CON_RELACION."""
-        result = _map_cancel_reason("01")
-        self.assertEqual(result, _FakeCancelReason.COMPROBANTE_EMITIDO_CON_ERRORES_CON_RELACION)
+        self._assert_reason(_map_cancel_reason("01"), "COMPROBANTE_EMITIDO_CON_ERRORES_CON_RELACION")
 
     def test_motivo_02_maps_correctly(self):
         """Motivo '02' → COMPROBANTE_EMITIDO_CON_ERRORES_SIN_RELACION."""
-        result = _map_cancel_reason("02")
-        self.assertEqual(result, _FakeCancelReason.COMPROBANTE_EMITIDO_CON_ERRORES_SIN_RELACION)
+        self._assert_reason(_map_cancel_reason("02"), "COMPROBANTE_EMITIDO_CON_ERRORES_SIN_RELACION")
 
     def test_motivo_03_maps_correctly(self):
         """Motivo '03' → NO_SE_LLEVO_A_CABO_LA_OPERACION."""
-        result = _map_cancel_reason("03")
-        self.assertEqual(result, _FakeCancelReason.NO_SE_LLEVO_A_CABO_LA_OPERACION)
+        self._assert_reason(_map_cancel_reason("03"), "NO_SE_LLEVO_A_CABO_LA_OPERACION")
 
     def test_motivo_04_maps_correctly(self):
         """Motivo '04' → OPERACION_NORMATIVA_RELACIONADA_EN_LA_FACTURA_GLOBAL."""
-        result = _map_cancel_reason("04")
-        self.assertEqual(result, _FakeCancelReason.OPERACION_NORMATIVA_RELACIONADA_EN_LA_FACTURA_GLOBAL)
+        self._assert_reason(_map_cancel_reason("04"), "OPERACION_NORMATIVA_RELACIONADA_EN_LA_FACTURA_GLOBAL")
 
     def test_invalid_motivo_raises_value_error(self):
         """Invalid motivo code must raise ValueError with hint."""

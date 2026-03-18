@@ -20,6 +20,9 @@ from unittest.mock import MagicMock
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _install_frappe_stub():
+    # Skip stubs if running inside Frappe bench (real modules available)
+    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
+        return
     if "frappe" in sys.modules:
         return  # already installed by another test module in the same run
 

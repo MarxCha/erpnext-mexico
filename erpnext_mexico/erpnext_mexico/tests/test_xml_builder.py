@@ -66,7 +66,17 @@ class _FakeConcepto:
 # ──────────────────────────────────────────────────────────────────────────────
 
 def _install_stubs():
-    """Register lightweight stubs for frappe and satcfdi."""
+    """Register lightweight stubs for frappe and satcfdi.
+
+    Skips stub installation if the real modules are already loaded
+    (e.g. when running inside a Frappe bench test environment).
+    """
+    # Skip stubs if running inside Frappe bench (real modules available)
+    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
+        return
+    # If real satcfdi is available, skip ALL stubs — use real modules
+    if "satcfdi.create.cfd.cfdi40" in sys.modules:
+        return
 
     # -- frappe stub ----------------------------------------------------------
     frappe_stub = types.ModuleType("frappe")
@@ -233,22 +243,55 @@ class TestBuildConcepto(unittest.TestCase):
         doc.taxes = [tax]
         return doc
 
+    def _get_impuestos(self, concepto):
+        """Get Impuestos from Concepto (dict or attr access)."""
+        if isinstance(concepto, dict) or hasattr(concepto, 'get'):
+            return concepto.get("Impuestos")
+        return getattr(concepto, "impuestos", None)
+
+    def _get_traslados(self, impuestos):
+        """Get Traslados list from Impuestos."""
+        if impuestos is None:
+            return None
+        if isinstance(impuestos, dict) or hasattr(impuestos, 'get'):
+            v = impuestos.get("Traslados") if hasattr(impuestos, 'get') else None
+            return v
+        return getattr(impuestos, "traslados", None)
+
+    def _get_retenciones(self, impuestos):
+        """Get Retenciones list from Impuestos."""
+        if impuestos is None:
+            return None
+        if isinstance(impuestos, dict) or hasattr(impuestos, 'get'):
+            return impuestos.get("Retenciones") if hasattr(impuestos, 'get') else None
+        return getattr(impuestos, "retenciones", None)
+
+    def _get_val(self, obj, sat_key):
+        """Get value from ScalarMap (CamelCase) or fake (snake_case)."""
+        if isinstance(obj, dict) or hasattr(obj, 'get'):
+            return obj.get(sat_key) if hasattr(obj, 'get') else None
+        import re
+        snake = re.sub(r'(?<!^)(?=[A-Z])', '_', sat_key).lower()
+        return getattr(obj, snake, None)
+
     def test_objeto_imp_02_with_iva_16_has_traslados(self):
         """Concepto with ObjetoImp 02 and IVA 16% must include traslados."""
         item = self._make_item()
         doc = self._make_doc_with_iva()
         concepto = _build_concepto(item, doc)
         self.assertIsNotNone(concepto)
-        self.assertIsNotNone(concepto.impuestos)
-        self.assertIsNotNone(concepto.impuestos.traslados)
-        self.assertEqual(len(concepto.impuestos.traslados), 1)
+        imp = self._get_impuestos(concepto)
+        self.assertIsNotNone(imp)
+        traslados = self._get_traslados(imp)
+        self.assertIsNotNone(traslados)
+        self.assertEqual(len(traslados), 1)
 
     def test_objeto_imp_01_no_impuestos(self):
         """Concepto with ObjetoImp 01 (no objeto de impuesto) has no traslados."""
         item = self._make_item(objeto_imp="01")
         doc = self._make_doc_with_iva()
         concepto = _build_concepto(item, doc)
-        self.assertIsNone(concepto.impuestos)
+        self.assertIsNone(self._get_impuestos(concepto))
 
     def test_no_double_discount_base_uses_item_amount(self):
         """
@@ -258,24 +301,30 @@ class TestBuildConcepto(unittest.TestCase):
         item = self._make_item(amount=900, discount_amount=100, rate=1000)
         doc = self._make_doc_with_iva()
         concepto = _build_concepto(item, doc)
-        traslado = concepto.impuestos.traslados[0]
-        self.assertEqual(traslado.base, Decimal("900"))
+        imp = self._get_impuestos(concepto)
+        traslados = self._get_traslados(imp)
+        traslado = traslados[0]
+        self.assertEqual(self._get_val(traslado, "Base"), Decimal("900"))
 
     def test_iva_traslado_impuesto_code_is_002(self):
         """IVA traslado must use SAT code '002' for IVA."""
         item = self._make_item()
         doc = self._make_doc_with_iva()
         concepto = _build_concepto(item, doc)
-        traslado = concepto.impuestos.traslados[0]
-        self.assertEqual(traslado.impuesto, "002")
+        imp = self._get_impuestos(concepto)
+        traslados = self._get_traslados(imp)
+        traslado = traslados[0]
+        self.assertEqual(self._get_val(traslado, "Impuesto"), "002")
 
     def test_iva_traslado_tasa_o_cuota_matches_doc(self):
         """Traslado tasa_o_cuota must reflect the template rate (8% border)."""
         item = self._make_item()
         doc = self._make_doc_with_iva(rate=8, description="IVA 8%")
         concepto = _build_concepto(item, doc)
-        traslado = concepto.impuestos.traslados[0]
-        self.assertEqual(traslado.tasa_o_cuota, Decimal("0.080000"))
+        imp = self._get_impuestos(concepto)
+        traslados = self._get_traslados(imp)
+        traslado = traslados[0]
+        self.assertEqual(self._get_val(traslado, "TasaOCuota"), Decimal("0.080000"))
 
     def test_isr_retention_adds_retencion(self):
         """ISR retention row in taxes produces a Retencion with impuesto '001'."""
@@ -294,17 +343,21 @@ class TestBuildConcepto(unittest.TestCase):
         doc.taxes = [tax_iva, tax_isr]
 
         concepto = _build_concepto(item, doc)
-        self.assertIsNotNone(concepto.impuestos.retenciones)
-        ret = concepto.impuestos.retenciones[0]
-        self.assertEqual(ret.impuesto, "001")  # ISR
+        imp = self._get_impuestos(concepto)
+        retenciones = self._get_retenciones(imp)
+        self.assertIsNotNone(retenciones)
+        ret = retenciones[0]
+        self.assertEqual(self._get_val(ret, "Impuesto"), "001")  # ISR
 
     def test_no_doc_uses_default_16_rate(self):
         """When doc=None, the 16% default rate is used for objeto_imp 02."""
         item = self._make_item()
         concepto = _build_concepto(item, None)
-        self.assertIsNotNone(concepto.impuestos)
-        traslado = concepto.impuestos.traslados[0]
-        self.assertEqual(traslado.tasa_o_cuota, Decimal("0.160000"))
+        imp = self._get_impuestos(concepto)
+        self.assertIsNotNone(imp)
+        traslados = self._get_traslados(imp)
+        traslado = traslados[0]
+        self.assertEqual(self._get_val(traslado, "TasaOCuota"), Decimal("0.160000"))
 
     def test_exempt_taxes_list_no_traslados(self):
         """Objeto_imp 02 with empty taxes list produces no traslados (exento)."""
@@ -313,7 +366,7 @@ class TestBuildConcepto(unittest.TestCase):
         doc.taxes = []
         concepto = _build_concepto(item, doc)
         # None IVA rate → no traslados → no impuestos object
-        self.assertIsNone(concepto.impuestos)
+        self.assertIsNone(self._get_impuestos(concepto))
 
 
 if __name__ == "__main__":

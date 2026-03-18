@@ -342,6 +342,7 @@ def _build_autotransporte(doc) -> Autotransporte:
 
     identificacion_vehicular = IdentificacionVehicular(
         config_vehicular=doc.mx_config_vehicular,
+        peso_bruto_vehicular=Decimal(str(getattr(doc, "mx_peso_bruto_vehicular", 0) or 0)),
         placa_vm=doc.mx_placa_vehiculo,
         anio_modelo_vm=int(doc.mx_anio_modelo_vehiculo),
     )

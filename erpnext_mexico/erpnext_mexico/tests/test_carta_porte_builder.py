@@ -118,6 +118,9 @@ class _FakeCartaPorte:
 
 def _install_stubs():
     """Register lightweight stubs for frappe and satcfdi."""
+    # Skip stubs if running inside Frappe bench (real modules available)
+    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
+        return
 
     # -- frappe stub ----------------------------------------------------------
     frappe_stub = types.ModuleType("frappe")
@@ -180,6 +183,32 @@ def _install_stubs():
 
 _install_stubs()
 
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Duck-typing helper — works with both fake dataclasses and satcfdi ScalarMaps
+# ──────────────────────────────────────────────────────────────────────────────
+
+def _v(obj, sat_key):
+    """Extract a value from either a ScalarMap (dict, SAT CamelCase keys)
+    or a fake dataclass (snake_case attrs).
+    """
+    if isinstance(obj, dict):
+        return obj.get(sat_key)
+    import re
+    snake = re.sub(r'(?<!^)(?=[A-Z])', '_', sat_key).lower()
+    return getattr(obj, snake, getattr(obj, sat_key, None))
+
+
+def _items(obj, sat_key):
+    """Return the list stored at sat_key / snake_case attr."""
+    val = _v(obj, sat_key)
+    if val is None:
+        return []
+    if isinstance(val, (list, tuple)):
+        return list(val)
+    return [val]
+
+
 # Now safe to import the helpers under test
 from erpnext_mexico.cfdi.carta_porte_builder import (  # noqa: E402
     _validate_company_fiscal_data,
@@ -226,6 +255,7 @@ def _make_full_delivery_note():
     doc.mx_distancia_recorrida = Decimal("900")
     # Vehículo
     doc.mx_config_vehicular = "C2"
+    doc.mx_peso_bruto_vehicular = Decimal("15")
     doc.mx_placa_vehiculo = "ABC1234"
     doc.mx_anio_modelo_vehiculo = 2022
     doc.mx_perm_sct = "TPAF01"
@@ -366,7 +396,7 @@ class TestCartaPorteHelpers(unittest.TestCase):
         """One item in the Delivery Note must produce exactly one Mercancia node."""
         doc = self._make_doc_with_items([self._make_item()])
         mercancias = _build_mercancias(doc)
-        self.assertEqual(len(mercancias.mercancia), 1)
+        self.assertEqual(len(_items(mercancias, "Mercancia")), 1)
 
     def test_build_mercancias_multiple_items(self):
         """Three items must produce three Mercancia nodes."""
@@ -377,7 +407,7 @@ class TestCartaPorteHelpers(unittest.TestCase):
         ]
         doc = self._make_doc_with_items(items)
         mercancias = _build_mercancias(doc)
-        self.assertEqual(len(mercancias.mercancia), 3)
+        self.assertEqual(len(_items(mercancias, "Mercancia")), 3)
 
     def test_build_mercancias_peso_bruto_total_sums_all_items(self):
         """peso_bruto_total must be the sum of mx_peso_en_kg across all items.
@@ -391,35 +421,37 @@ class TestCartaPorteHelpers(unittest.TestCase):
         ]
         doc = self._make_doc_with_items(items)
         mercancias = _build_mercancias(doc)
-        self.assertEqual(mercancias.peso_bruto_total, Decimal("16"))
+        self.assertEqual(_v(mercancias, "PesoBrutoTotal"), Decimal("16"))
 
     def test_build_mercancias_num_total_mercancias_matches_item_count(self):
         """num_total_mercancias must equal the number of items."""
         items = [self._make_item() for _ in range(4)]
         doc = self._make_doc_with_items(items)
         mercancias = _build_mercancias(doc)
-        self.assertEqual(mercancias.num_total_mercancias, 4)
+        self.assertEqual(_v(mercancias, "NumTotalMercancias"), 4)
 
     def test_build_mercancias_bienes_transp_from_clave_prod_serv_cp(self):
         """Mercancia bienes_transp must use mx_clave_prod_serv_cp when available."""
         item = self._make_item(clave_cp="24102300")
         doc = self._make_doc_with_items([item])
         mercancias = _build_mercancias(doc)
-        self.assertEqual(mercancias.mercancia[0].bienes_transp, "24102300")
+        merc_list = _items(mercancias, "Mercancia")
+        self.assertEqual(_v(merc_list[0], "BienesTransp"), "24102300")
 
     def test_build_mercancias_valor_set_when_rate_positive(self):
         """When item.rate > 0, valor_mercancia must be set to item.amount."""
         item = self._make_item(rate=200, amount=1000)
         doc = self._make_doc_with_items([item])
         mercancias = _build_mercancias(doc)
-        self.assertIsNotNone(mercancias.mercancia[0].valor_mercancia)
-        self.assertEqual(mercancias.mercancia[0].valor_mercancia, Decimal("1000"))
+        merc_list = _items(mercancias, "Mercancia")
+        self.assertIsNotNone(_v(merc_list[0], "ValorMercancia"))
+        self.assertEqual(_v(merc_list[0], "ValorMercancia"), Decimal("1000"))
 
     def test_build_mercancias_unidad_peso_is_kgm(self):
         """unidad_peso must always be 'KGM' (SAT standard for kilograms)."""
         doc = self._make_doc_with_items([self._make_item()])
         mercancias = _build_mercancias(doc)
-        self.assertEqual(mercancias.unidad_peso, "KGM")
+        self.assertEqual(_v(mercancias, "UnidadPeso"), "KGM")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -433,38 +465,43 @@ class TestBuildAutotransporte(unittest.TestCase):
         """Autotransporte must carry mx_perm_sct from the doc."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertEqual(autotransporte.perm_sct, "TPAF01")
+        self.assertEqual(_v(autotransporte, "PermSCT"), "TPAF01")
 
     def test_autotransporte_num_permiso_set(self):
         """Autotransporte must carry mx_num_permiso_sct from the doc."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertEqual(autotransporte.num_permiso_sct, "SCT-0001")
+        self.assertEqual(_v(autotransporte, "NumPermisoSCT"), "SCT-0001")
 
     def test_autotransporte_seguros_aseguradora_set(self):
         """Seguros must carry aseguradora from mx_aseguradora_resp_civil."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertEqual(autotransporte.seguros.asegura_resp_civil, "Aseguradora MX SA")
+        seguros = _v(autotransporte, "Seguros")
+        self.assertEqual(_v(seguros, "AseguraRespCivil"), "Aseguradora MX SA")
 
     def test_autotransporte_seguros_poliza_set(self):
         """Seguros must carry poliza from mx_poliza_resp_civil."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertEqual(autotransporte.seguros.poliza_resp_civil, "POL-001")
+        seguros = _v(autotransporte, "Seguros")
+        self.assertEqual(_v(seguros, "PolizaRespCivil"), "POL-001")
 
     def test_autotransporte_placa_vehiculo_set(self):
         """IdentificacionVehicular must carry placa from mx_placa_vehiculo."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertEqual(autotransporte.identificacion_vehicular.placa_vm, "ABC1234")
+        id_veh = _v(autotransporte, "IdentificacionVehicular")
+        self.assertEqual(_v(id_veh, "PlacaVM"), "ABC1234")
 
     def test_autotransporte_anio_modelo_is_int(self):
         """IdentificacionVehicular anio_modelo_vm must be an integer."""
         doc = _make_full_delivery_note()
         autotransporte = _build_autotransporte(doc)
-        self.assertIsInstance(autotransporte.identificacion_vehicular.anio_modelo_vm, int)
-        self.assertEqual(autotransporte.identificacion_vehicular.anio_modelo_vm, 2022)
+        id_veh = _v(autotransporte, "IdentificacionVehicular")
+        anio = _v(id_veh, "AnioModeloVM")
+        self.assertIsInstance(anio, int)
+        self.assertEqual(anio, 2022)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -479,13 +516,13 @@ class TestBuildFiguraTransporte(unittest.TestCase):
         doc = _make_full_delivery_note()
         figuras = _build_figura_transporte(doc)
         self.assertEqual(len(figuras), 1)
-        self.assertEqual(figuras[0].tipo_figura, "01")
+        self.assertEqual(_v(figuras[0], "TipoFigura"), "01")
 
     def test_figura_nombre_from_mx_nombre_conductor(self):
         """TiposFigura nombre_figura must come from mx_nombre_conductor."""
         doc = _make_full_delivery_note()
         figuras = _build_figura_transporte(doc)
-        self.assertEqual(figuras[0].nombre_figura, "José García")
+        self.assertEqual(_v(figuras[0], "NombreFigura"), "José García")
 
 
 # ──────────────────────────────────────────────────────────────────────────────
