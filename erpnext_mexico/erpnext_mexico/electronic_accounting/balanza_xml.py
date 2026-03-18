@@ -42,6 +42,10 @@ def generate_balanza_xml(
     Returns:
         UTF-8 XML string conforming to BalanzaComprobacion_1_3.xsd.
     """
+    frappe.only_for(["System Manager", "Accounts Manager"])
+    if not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
+
     year = int(year)
     month = int(month)
     tipo_envio = (tipo_envio or "N").upper()

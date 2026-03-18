@@ -1,6 +1,8 @@
 <div class="cfdi-print">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=Source+Sans+3:wght@400;500;600&display=swap');
+        /* NOTE: Google Fonts import removed for CSP compliance. Self-host DM Sans and
+           Source Sans 3 via your CDN or include them in the Frappe app's public/fonts/
+           directory and reference them with a local @font-face rule instead. */
 
         .cfdi-print {
             font-family: 'Source Sans 3', 'Helvetica Neue', Arial, sans-serif;
@@ -210,11 +212,11 @@
             {% if company_logo %}
             <img src="{{ company_logo }}" alt="Logo">
             {% endif %}
-            <h2>{{ mx_nombre_fiscal }}</h2>
+            <h2>{{ mx_nombre_fiscal | e }}</h2>
             <div class="cfdi-header__fiscal">
-                <strong>RFC:</strong> {{ mx_rfc_emisor }}<br>
-                {% if mx_regimen_emisor %}<strong>Régimen:</strong> {{ mx_regimen_emisor }}<br>{% endif %}
-                {% if mx_cp_emisor %}<strong>Lugar de expedición (CP):</strong> {{ mx_cp_emisor }}{% endif %}
+                <strong>RFC:</strong> {{ mx_rfc_emisor | e }}<br>
+                {% if mx_regimen_emisor %}<strong>Régimen:</strong> {{ mx_regimen_emisor | e }}<br>{% endif %}
+                {% if mx_cp_emisor %}<strong>Lugar de expedición (CP):</strong> {{ mx_cp_emisor | e }}{% endif %}
             </div>
         </div>
         <div class="cfdi-header__cfdi">
@@ -222,7 +224,7 @@
             {%- set tipo_code = doc.get("mx_tipo_comprobante") or "I" -%}
             <span class="cfdi-tipo">CFDI 4.0 — {{ tipo_map.get(tipo_code, "Factura") }}</span><br>
             <div class="cfdi-folio">
-                {% if doc.mx_serie %}{{ doc.mx_serie }}&nbsp;{% endif %}{{ doc.name }}
+                {% if doc.mx_serie %}{{ doc.mx_serie | e }}&nbsp;{% endif %}{{ doc.name | e }}
             </div>
             <div class="cfdi-fecha">{{ doc.posting_date }}</div>
             {% if doc.mx_metodo_pago or doc.mx_forma_pago %}
@@ -239,14 +241,14 @@
         <h3>Receptor</h3>
         <div class="cfdi-receptor__grid">
             <span class="cfdi-receptor__label">Cliente</span>
-            <span class="cfdi-receptor__value">{{ doc.customer_name }}</span>
+            <span class="cfdi-receptor__value">{{ doc.customer_name | e }}</span>
             <span class="cfdi-receptor__label">RFC</span>
-            <span class="cfdi-receptor__value">{{ mx_rfc_receptor or "—" }}</span>
+            <span class="cfdi-receptor__value">{{ mx_rfc_receptor | e or "—" }}</span>
 
             <span class="cfdi-receptor__label">Régimen fiscal</span>
-            <span class="cfdi-receptor__value">{{ mx_regimen_receptor or "—" }}</span>
+            <span class="cfdi-receptor__value">{{ mx_regimen_receptor | e or "—" }}</span>
             <span class="cfdi-receptor__label">Domicilio fiscal (CP)</span>
-            <span class="cfdi-receptor__value">{{ mx_cp_receptor or "—" }}</span>
+            <span class="cfdi-receptor__value">{{ mx_cp_receptor | e or "—" }}</span>
 
             <span class="cfdi-receptor__label">Uso CFDI</span>
             <span class="cfdi-receptor__value">{{ doc.mx_uso_cfdi or "—" }}</span>
@@ -270,14 +272,14 @@
         <tbody>
             {% for item in doc.items %}
             <tr>
-                <td class="sat-key">{{ item.get("mx_clave_prod_serv") or "—" }}</td>
+                <td class="sat-key">{{ item.get("mx_clave_prod_serv") | e or "—" }}</td>
                 <td class="item-desc">
-                    {{ item.item_name or item.description }}
+                    {{ (item.item_name or item.description) | e }}
                     {% if item.get("mx_no_identificacion") %}
-                    <small>No. ID: {{ item.mx_no_identificacion }}</small>
+                    <small>No. ID: {{ item.mx_no_identificacion | e }}</small>
                     {% endif %}
                 </td>
-                <td class="sat-key">{{ item.get("mx_clave_unidad") or item.uom }}</td>
+                <td class="sat-key">{{ (item.get("mx_clave_unidad") or item.uom) | e }}</td>
                 <td class="text-right">{{ item.qty | float | round(2) }}</td>
                 <td class="text-right">{{ frappe.format(item.rate, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
                 <td class="text-right">{{ frappe.format(item.amount, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
@@ -296,7 +298,7 @@
                 </tr>
                 {% for tax in doc.taxes %}
                 <tr class="tax-row">
-                    <td>{{ tax.description }}</td>
+                    <td>{{ tax.description | e }}</td>
                     <td>{{ frappe.format(tax.tax_amount, {"fieldtype": "Currency", "currency": doc.currency}) }}</td>
                 </tr>
                 {% endfor %}
@@ -321,42 +323,42 @@
     {% if doc.get("mx_cfdi_uuid") %}
     <div class="cfdi-stamp">
         <h3>Timbre Fiscal Digital — SAT</h3>
-        <div class="cfdi-stamp__uuid">{{ doc.mx_cfdi_uuid }}</div>
+        <div class="cfdi-stamp__uuid">{{ doc.mx_cfdi_uuid | e }}</div>
         <div class="cfdi-stamp__body">
             <div class="cfdi-stamp__fields">
                 <div class="cfdi-stamp__field">
                     <span class="cfdi-stamp__label">Fecha timbrado:</span>
-                    <span>{{ doc.get("mx_cfdi_fecha_timbrado") or doc.mx_cfdi_status or "—" }}</span>
+                    <span>{{ (doc.get("mx_cfdi_fecha_timbrado") or doc.mx_cfdi_status or "—") | e }}</span>
                 </div>
                 <div class="cfdi-stamp__field">
                     <span class="cfdi-stamp__label">No. Cert. SAT:</span>
-                    <span class="cfdi-stamp__value">{{ doc.get("mx_no_certificado_sat") or "—" }}</span>
+                    <span class="cfdi-stamp__value">{{ (doc.get("mx_no_certificado_sat") or "—") | e }}</span>
                 </div>
                 <div class="cfdi-stamp__field">
                     <span class="cfdi-stamp__label">No. Cert. Emisor:</span>
-                    <span class="cfdi-stamp__value">{{ doc.get("mx_no_certificado") or "—" }}</span>
+                    <span class="cfdi-stamp__value">{{ (doc.get("mx_no_certificado") or "—") | e }}</span>
                 </div>
                 {% if doc.get("mx_sello_cfdi") %}
                 <div class="cfdi-stamp__field" style="margin-top:6px;">
                     <span class="cfdi-stamp__label">Sello CFDI:</span><br>
-                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_cfdi[:80] }}...</span>
+                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_cfdi[:80] | e }}...</span>
                 </div>
                 {% endif %}
                 {% if doc.get("mx_sello_sat") %}
                 <div class="cfdi-stamp__field" style="margin-top:4px;">
                     <span class="cfdi-stamp__label">Sello SAT:</span><br>
-                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_sat[:80] }}...</span>
+                    <span class="cfdi-stamp__value" style="font-size:9px;">{{ doc.mx_sello_sat[:80] | e }}...</span>
                 </div>
                 {% endif %}
                 {% if doc.get("mx_cadena_original_tfd") %}
                 <div class="cfdi-stamp__field" style="margin-top:6px;">
                     <span class="cfdi-stamp__label">Cadena original TFD:</span><br>
-                    <span class="cfdi-stamp__value" style="font-size:9px; word-break:break-all;">{{ doc.mx_cadena_original_tfd[:120] }}...</span>
+                    <span class="cfdi-stamp__value" style="font-size:9px; word-break:break-all;">{{ doc.mx_cadena_original_tfd[:120] | e }}...</span>
                 </div>
                 {% endif %}
             </div>
             <div class="cfdi-stamp__qr">
-                {%- set qr_url = 'https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=' ~ doc.mx_cfdi_uuid ~ '&re=' ~ mx_rfc_emisor ~ '&rr=' ~ mx_rfc_receptor ~ '&tt=' ~ (doc.grand_total | string) ~ '&fe=' ~ (doc.get('mx_sello_cfdi') or '')[-8:] -%}
+                {%- set qr_url = 'https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=' ~ (doc.mx_cfdi_uuid | urlencode) ~ '&re=' ~ (mx_rfc_emisor | urlencode) ~ '&rr=' ~ (mx_rfc_receptor | urlencode) ~ '&tt=' ~ (doc.grand_total | string | urlencode) ~ '&fe=' ~ ((doc.get('mx_sello_cfdi') or '')[-8:] | urlencode) -%}
                 {%- set qr_data_uri = get_qr_code_data_uri(qr_url) -%}
                 <img
                     src="{{ qr_data_uri }}"

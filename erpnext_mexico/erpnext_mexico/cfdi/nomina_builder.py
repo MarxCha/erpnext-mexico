@@ -210,8 +210,8 @@ def _build_nomina_receptor(salary_slip, employee) -> nomina12.Receptor:
     # Número de empleado
     num_empleado = employee.name
 
-    # Antigüedad en formato PnYnM (ISO 8601 duration)
-    antiguedad = _calc_antiguedad(employee)
+    # Antigüedad en formato PnYnM (ISO 8601 duration) — usar end_date del slip como fecha de referencia
+    antiguedad = _calc_antiguedad(employee, salary_slip.end_date)
 
     # Estado donde trabaja el empleado
     clave_ent_fed = getattr(employee, "mx_clave_ent_fed", None)
@@ -544,9 +544,14 @@ def _get_periodicidad_pago(salary_slip, employee) -> str:
     return "04"
 
 
-def _calc_antiguedad(employee) -> str | None:
+def _calc_antiguedad(employee, reference_date=None) -> str | None:
     """
     Calcula la antigüedad del empleado en formato PnYnM (ISO 8601 duration).
+
+    Args:
+        employee: Documento Employee de ERPNext.
+        reference_date: Fecha de referencia para el cálculo (salary_slip.end_date).
+                        Si no se provee, se usa la fecha del último día del slip.
 
     Ejemplo: P2Y3M = 2 años, 3 meses
     """
@@ -554,9 +559,9 @@ def _calc_antiguedad(employee) -> str | None:
         return None
     try:
         joining = _to_date(employee.date_of_joining)
-        today = date.today()
-        years = today.year - joining.year
-        months = today.month - joining.month
+        ref = _to_date(reference_date) if reference_date else date.today()
+        years = ref.year - joining.year
+        months = ref.month - joining.month
         if months < 0:
             years -= 1
             months += 12

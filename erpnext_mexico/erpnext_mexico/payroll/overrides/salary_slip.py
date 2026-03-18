@@ -10,6 +10,13 @@ Flujo:
 
 import frappe
 from frappe import _
+from erpnext_mexico.cfdi.cfdi_helpers import (
+    is_mexico_company,
+    get_cfdi_settings,
+    save_cfdi_attachment,
+    create_cfdi_log,
+    handle_stamp_error,
+)
 
 
 def validate(doc, method=None):
@@ -20,7 +27,7 @@ def validate(doc, method=None):
     - Verifica que el empleado tenga mx_rfc y mx_curp configurados
     - Emite warnings si faltan datos opcionales (NSS, SBC, SDI)
     """
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         return
 
     _validate_employee_fiscal_fields(doc)
@@ -33,7 +40,7 @@ def on_cancel(doc, method=None):
     La cancelación del CFDI nómina ante el SAT debe hacerse manualmente
     o mediante el botón 'Cancelar CFDI Nómina' disponible en el formulario.
     """
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         return
 
     if getattr(doc, "mx_nomina_uuid", None) and doc.mx_nomina_status == "Timbrado":
@@ -56,10 +63,10 @@ def on_submit(doc, method=None):
     - auto_stamp_on_submit=True  → timbra automáticamente
     - auto_stamp_on_submit=False → marca como 'Pendiente' para timbrado manual
     """
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         return
 
-    settings = _get_cfdi_settings()
+    settings = get_cfdi_settings()
     if not settings or not settings.auto_stamp_on_submit:
         doc.db_set("mx_nomina_status", "Pendiente", update_modified=False)
         return
@@ -97,12 +104,12 @@ def stamp_nomina(doc) -> None:
         result = pac.stamp(xml_bytes.decode("utf-8"))
 
         if not result.success:
-            _handle_stamp_error(doc, result.error_message)
+            handle_stamp_error(doc, "mx_nomina_status", result.error_message)
             return
 
         # 4. Almacenar XML como adjunto privado
         xml_filename = f"CFDI_Nomina_{doc.name}_{result.uuid}.xml"
-        xml_file = _save_attachment(doc, xml_filename, result.xml_stamped, "text/xml")
+        xml_file = save_cfdi_attachment(doc, xml_filename, result.xml_stamped, "text/xml")
 
         doc.db_set("mx_nomina_uuid", result.uuid, update_modified=False)
         doc.db_set("mx_nomina_status", "Timbrado", update_modified=False)
@@ -110,7 +117,7 @@ def stamp_nomina(doc) -> None:
         doc.db_set("mx_nomina_fecha_timbrado", result.fecha_timbrado, update_modified=False)
 
         # 5. Registrar en MX CFDI Log
-        _create_cfdi_log(doc, result)
+        create_cfdi_log(doc, result, "N")
 
         frappe.msgprint(
             _("CFDI Nómina timbrado exitosamente.<br>UUID: <b>{0}</b>").format(result.uuid),
@@ -119,7 +126,7 @@ def stamp_nomina(doc) -> None:
         )
 
     except Exception as e:
-        _handle_stamp_error(doc, str(e))
+        handle_stamp_error(doc, "mx_nomina_status", str(e))
 
 
 @frappe.whitelist()
@@ -139,7 +146,7 @@ def retry_stamp_nomina(salary_slip_name: str) -> None:
             title=_("Ya timbrado"),
         )
 
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         frappe.throw(
             _("La empresa {0} no tiene configuración fiscal mexicana (RFC no definido).").format(
                 doc.company
@@ -151,19 +158,6 @@ def retry_stamp_nomina(salary_slip_name: str) -> None:
 
 
 # ── Helpers privados ──────────────────────────────────────────────────────────
-
-def _is_mexico_company(company: str) -> bool:
-    """Verifica si la empresa tiene configuración fiscal mexicana (RFC definido)."""
-    return bool(frappe.db.get_value("Company", company, "mx_rfc"))
-
-
-def _get_cfdi_settings():
-    """Obtiene MX CFDI Settings (Single DocType), o None si no está configurado."""
-    try:
-        return frappe.get_single("MX CFDI Settings")
-    except Exception:
-        return None
-
 
 def _validate_employee_fiscal_fields(doc) -> None:
     """
@@ -219,50 +213,3 @@ def _validate_employee_fiscal_fields(doc) -> None:
         frappe.msgprint(warning, indicator="orange", alert=True)
 
 
-def _handle_stamp_error(doc, error_message: str) -> None:
-    """
-    Registra el error de timbrado.
-    Persiste estado 'Error' con un commit separado antes de lanzar excepción,
-    para que el estado quede guardado aunque el submit haga rollback.
-    """
-    frappe.db.set_value(
-        doc.doctype, doc.name, "mx_nomina_status", "Error", update_modified=False
-    )
-    frappe.db.commit()
-    frappe.log_error(
-        message=error_message,
-        title=f"Error timbrado CFDI nómina: {doc.name}",
-    )
-    frappe.throw(
-        _("Error al timbrar CFDI Nómina: {0}").format(error_message),
-        title=_("Error de timbrado"),
-    )
-
-
-def _save_attachment(doc, filename: str, content: str, content_type: str):
-    """Guarda un archivo como adjunto privado al documento Salary Slip."""
-    file_doc = frappe.get_doc({
-        "doctype": "File",
-        "file_name": filename,
-        "attached_to_doctype": doc.doctype,
-        "attached_to_name": doc.name,
-        "content": content,
-        "is_private": 1,
-    })
-    file_doc.save(ignore_permissions=True)
-    return file_doc
-
-
-def _create_cfdi_log(doc, result) -> None:
-    """Crea registro en MX CFDI Log para el CFDI de nómina."""
-    frappe.get_doc({
-        "doctype": "MX CFDI Log",
-        "reference_doctype": "Salary Slip",
-        "reference_name": doc.name,
-        "cfdi_type": "N",
-        "uuid": result.uuid,
-        "status": "Stamped",
-        "xml_stamped": result.xml_stamped,
-        "pac_used": frappe.db.get_single_value("MX CFDI Settings", "pac_provider"),
-        "stamped_at": result.fecha_timbrado,
-    }).insert(ignore_permissions=True)

@@ -4,6 +4,8 @@ from frappe import _
 @frappe.whitelist()
 def get_setup_data():
     """Get current setup state for the wizard."""
+    frappe.only_for(["System Manager", "Accounts Manager"])
+
     companies = frappe.get_list("Company",
         filters={"country": ["in", ["Mexico", "México", ""]]},
         fields=["name", "abbr", "mx_rfc", "mx_nombre_fiscal", "mx_regimen_fiscal", "mx_lugar_expedicion"],
@@ -42,8 +44,8 @@ def get_setup_data():
         "settings": {
             "pac_provider": settings.pac_provider,
             "pac_environment": settings.pac_environment,
-            "pac_credentials": settings.pac_credentials,
-            "default_certificate": settings.default_certificate,
+            "pac_configured": bool(settings.pac_credentials),
+            "certificate_configured": bool(settings.default_certificate),
         },
         "pac_credentials": pac_credentials,
         "fiscal_regimes": fiscal_regimes,
@@ -53,6 +55,10 @@ def get_setup_data():
 @frappe.whitelist()
 def save_company_fiscal(company, rfc, nombre_fiscal, regimen_fiscal, lugar_expedicion):
     """Save fiscal data for a company."""
+    frappe.only_for(["System Manager", "Accounts Manager"])
+    if not frappe.has_permission("Company", "write", company):
+        frappe.throw(_("Sin permiso para modificar esta empresa"), frappe.PermissionError)
+
     # Validate RFC format server-side (M-20)
     if rfc:
         from erpnext_mexico.utils.rfc_validator import validate_rfc
@@ -72,6 +78,7 @@ def save_company_fiscal(company, rfc, nombre_fiscal, regimen_fiscal, lugar_exped
 @frappe.whitelist()
 def save_pac_settings(pac_provider, pac_environment, pac_credentials=None):
     """Save PAC configuration."""
+    frappe.only_for("System Manager")
     settings = frappe.get_single("MX CFDI Settings")
     settings.pac_provider = pac_provider
     settings.pac_environment = pac_environment

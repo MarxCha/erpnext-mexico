@@ -270,7 +270,9 @@ def _get_active_certificate(company: str):
     """
     settings = frappe.get_single("MX CFDI Settings")
     if settings.default_certificate:
-        return frappe.get_doc("MX Digital Certificate", settings.default_certificate)
+        cert = frappe.get_doc("MX Digital Certificate", settings.default_certificate)
+        if not company or cert.company == company:
+            return cert
 
     # Fallback: buscar cualquier certificado activo de la empresa
     cert_name = frappe.db.get_value(
@@ -299,10 +301,10 @@ def _get_file_bytes(file_url: str) -> bytes:
 
     if file_url.startswith("/private/"):
         # /private/files/nombre.ext -> <site_path>/private/files/nombre.ext
-        abs_path = frappe.get_site_path() + file_url
+        abs_path = os.path.join(frappe.get_site_path(), file_url.lstrip("/"))
     elif file_url.startswith("/files/"):
         # /files/nombre.ext -> <site_path>/public/files/nombre.ext
-        abs_path = frappe.get_site_path("public") + file_url
+        abs_path = os.path.join(frappe.get_site_path("public"), file_url.lstrip("/"))
     else:
         frappe.throw(_("Ruta de archivo no reconocida: {0}").format(file_url))
 

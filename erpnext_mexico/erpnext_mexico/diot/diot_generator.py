@@ -65,6 +65,10 @@ def generate_diot(company: str, month: int, year: int) -> dict:
             supplier_count – number of unique suppliers included
             total_lines    – number of data lines generated
     """
+    frappe.only_for(["System Manager", "Accounts Manager", "Accounts User"])
+    if not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
+
     month = int(month)
     year = int(year)
 
@@ -121,6 +125,9 @@ def download_diot(company: str, month: int, year: int):
 
     Raises frappe.throw if no data exists for the period.
     """
+    frappe.only_for(["System Manager", "Accounts Manager", "Accounts User"])
+    if not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
     result = generate_diot(company, int(month), int(year))
     if not result.get("content"):
         frappe.throw(_("No hay datos para generar el archivo DIOT del periodo indicado"))
@@ -349,9 +356,8 @@ def _build_diot_line(data: dict) -> str:
         "",                                         # 24 (padding)
     ]
 
-    assert len(fields) == DIOT_FIELD_COUNT, (
-        f"DIOT line must have {DIOT_FIELD_COUNT} fields, got {len(fields)}"
-    )
+    if len(fields) != DIOT_FIELD_COUNT:
+        frappe.throw(f"DIOT line must have {DIOT_FIELD_COUNT} fields, got {len(fields)}")
 
     return "|".join(fields)
 

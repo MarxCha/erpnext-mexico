@@ -33,6 +33,10 @@ def generate_catalog_xml(company: str, year: int, month: int) -> str:
     Raises:
         frappe.ValidationError: If RFC is not configured for the company.
     """
+    frappe.only_for(["System Manager", "Accounts Manager"])
+    if not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
+
     year = int(year)
     month = int(month)
 

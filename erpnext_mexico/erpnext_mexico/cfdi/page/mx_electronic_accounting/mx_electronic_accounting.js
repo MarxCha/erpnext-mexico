@@ -284,6 +284,9 @@ class ElectronicAccountingPage {
             .map(y => `<option value="${y}"${y === curYear ? ' selected' : ''}>${y}</option>`)
             .join('');
 
+        // Security note: this template is safe because no user-supplied data is
+        // interpolated — only __() translated strings, numeric year/month values
+        // computed from `new Date()`, and static option labels are included.
         const html = `
 <div class="mx-eac-page">
   <div class="mx-eac-header">

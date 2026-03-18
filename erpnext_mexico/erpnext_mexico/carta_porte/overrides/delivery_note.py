@@ -11,6 +11,13 @@ Flujo:
 
 import frappe
 from frappe import _
+from erpnext_mexico.cfdi.cfdi_helpers import (
+    is_mexico_company,
+    get_cfdi_settings,
+    save_cfdi_attachment,
+    create_cfdi_log,
+    handle_stamp_error,
+)
 
 
 def on_submit(doc, method=None):
@@ -22,13 +29,13 @@ def on_submit(doc, method=None):
     - El campo mx_requires_carta_porte está marcado en el Delivery Note
     - auto_stamp_on_submit está activo en MX CFDI Settings
     """
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         return
 
     if not getattr(doc, "mx_requires_carta_porte", None):
         return
 
-    settings = _get_cfdi_settings()
+    settings = get_cfdi_settings()
     if not settings or not settings.auto_stamp_on_submit:
         doc.db_set("mx_carta_porte_status", "Pendiente", update_modified=False)
         frappe.msgprint(
@@ -71,12 +78,12 @@ def stamp_carta_porte(doc) -> None:
         result = pac.stamp(xml_bytes.decode("utf-8"))
 
         if not result.success:
-            _handle_stamp_error(doc, result.error_message)
+            handle_stamp_error(doc, "mx_carta_porte_status", result.error_message)
             return
 
         # 4. Almacenar XML como adjunto privado
         xml_filename = f"CartaPorte_{doc.name}_{result.uuid}.xml"
-        xml_file = _save_attachment(doc, xml_filename, result.xml_stamped, "text/xml")
+        xml_file = save_cfdi_attachment(doc, xml_filename, result.xml_stamped, "text/xml")
 
         doc.db_set("mx_carta_porte_uuid", result.uuid, update_modified=False)
         doc.db_set("mx_carta_porte_status", "Timbrado", update_modified=False)
@@ -84,7 +91,7 @@ def stamp_carta_porte(doc) -> None:
         doc.db_set("mx_carta_porte_fecha_timbrado", result.fecha_timbrado, update_modified=False)
 
         # 5. Registrar en MX CFDI Log
-        _create_cfdi_log(doc, result)
+        create_cfdi_log(doc, result, "T")
 
         frappe.msgprint(
             _("Carta Porte timbrada exitosamente.<br>UUID: <b>{0}</b>").format(result.uuid),
@@ -93,7 +100,7 @@ def stamp_carta_porte(doc) -> None:
         )
 
     except Exception as e:
-        _handle_stamp_error(doc, str(e))
+        handle_stamp_error(doc, "mx_carta_porte_status", str(e))
 
 
 def on_cancel(doc, method=None):
@@ -103,7 +110,7 @@ def on_cancel(doc, method=None):
     La cancelación del CFDI Carta Porte ante el SAT debe realizarse manualmente,
     ya que puede requerir aceptación del receptor según el monto de la mercancía.
     """
-    if not _is_mexico_company(doc.company):
+    if not is_mexico_company(doc.company):
         return
 
     if getattr(doc, "mx_carta_porte_uuid", None) and doc.mx_carta_porte_status == "Timbrado":
@@ -143,64 +150,3 @@ def retry_stamp_carta_porte(delivery_note_name: str) -> None:
     stamp_carta_porte(doc)
 
 
-# ── Helpers privados ──────────────────────────────────────────────────────────
-
-def _is_mexico_company(company: str) -> bool:
-    """Verifica si la empresa tiene configuración fiscal mexicana (RFC definido)."""
-    return bool(frappe.db.get_value("Company", company, "mx_rfc"))
-
-
-def _get_cfdi_settings():
-    """Obtiene MX CFDI Settings (Single DocType), o None si no está configurado."""
-    try:
-        return frappe.get_single("MX CFDI Settings")
-    except Exception:
-        return None
-
-
-def _handle_stamp_error(doc, error_message: str) -> None:
-    """
-    Registra el error de timbrado — persiste estado Error antes de lanzar excepción.
-    Usa commit separado para asegurar que el estado Error persiste aunque throw revierta.
-    """
-    frappe.db.set_value(
-        doc.doctype, doc.name, "mx_carta_porte_status", "Error", update_modified=False
-    )
-    frappe.db.commit()
-    frappe.log_error(
-        message=error_message,
-        title=f"Error timbrado Carta Porte: {doc.name}",
-    )
-    frappe.throw(
-        _("Error al timbrar Carta Porte: {0}").format(error_message),
-        title=_("Error de timbrado"),
-    )
-
-
-def _save_attachment(doc, filename: str, content: str, content_type: str):
-    """Guarda un archivo como adjunto privado al documento."""
-    file_doc = frappe.get_doc({
-        "doctype": "File",
-        "file_name": filename,
-        "attached_to_doctype": doc.doctype,
-        "attached_to_name": doc.name,
-        "content": content,
-        "is_private": 1,
-    })
-    file_doc.save(ignore_permissions=True)
-    return file_doc
-
-
-def _create_cfdi_log(doc, result) -> None:
-    """Crea registro en MX CFDI Log para el CFDI Carta Porte."""
-    frappe.get_doc({
-        "doctype": "MX CFDI Log",
-        "reference_doctype": "Delivery Note",
-        "reference_name": doc.name,
-        "cfdi_type": "T",
-        "uuid": result.uuid,
-        "status": "Stamped",
-        "xml_stamped": result.xml_stamped,
-        "pac_used": frappe.db.get_single_value("MX CFDI Settings", "pac_provider"),
-        "stamped_at": result.fecha_timbrado,
-    }).insert(ignore_permissions=True)

@@ -14,6 +14,8 @@ from frappe import _
 @frappe.whitelist()
 def get_companies() -> list[dict]:
     """Return active companies that have mx_rfc configured."""
+    frappe.only_for(["System Manager", "Accounts Manager", "Accounts User"])
+
     return frappe.get_all(
         "Company",
         filters={"mx_rfc": ["!=", ""]},

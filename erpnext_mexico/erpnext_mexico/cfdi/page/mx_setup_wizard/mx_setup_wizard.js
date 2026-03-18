@@ -214,7 +214,7 @@ class MXSetupWizard {
                 + Cargar Certificado CSD
             </a>
             <p style="font-size: 12px; color: var(--mx-text-muted); margin-top: 12px;">
-                RFC de prueba SAT: EKU9003173C9 | Contraseña: 12345678a
+                Para pruebas use el CSD de prueba del SAT (RFC: EKU9003173C9).
             </p>
         `;
     }

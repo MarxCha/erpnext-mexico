@@ -29,11 +29,15 @@ def check_cancellation_status():
         )
         # docstatus 2 = cancelled in ERPNext
         if doc_status == 2:
-            cfdi_status_field = (
-                "mx_cfdi_status"
-                if log.reference_doctype == "Sales Invoice"
-                else "mx_pago_status"
-            )
+            status_field_map = {
+                "Sales Invoice": "mx_cfdi_status",
+                "Payment Entry": "mx_pago_status",
+                "Delivery Note": "mx_carta_porte_status",
+                "Salary Slip": "mx_nomina_status",
+            }
+            cfdi_status_field = status_field_map.get(log.reference_doctype)
+            if not cfdi_status_field:
+                continue
             current_status = frappe.db.get_value(
                 log.reference_doctype, log.reference_name, cfdi_status_field
             )

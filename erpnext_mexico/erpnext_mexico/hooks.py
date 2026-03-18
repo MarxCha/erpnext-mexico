@@ -101,7 +101,9 @@ scheduler_events = {
 # ─────────────────────────────────────────────
 jinja = {
     "methods": [
-        "erpnext_mexico.utils.jinja_methods",
+        "erpnext_mexico.utils.jinja_methods.amount_to_words_mx",
+        "erpnext_mexico.utils.jinja_methods.format_rfc",
+        "erpnext_mexico.utils.jinja_methods.get_qr_code_data_uri",
     ],
 }
 

@@ -5,6 +5,7 @@ Esquema: PolizasPeriodo_1_3.xsd del SAT (Anexo 24)
 Solo se envía por requerimiento de auditoría del SAT (no envío mensual).
 Referencia: http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/PolizasPeriodo/
 """
+import re
 import frappe
 from frappe import _
 from frappe.utils import getdate, get_first_day, get_last_day
@@ -65,9 +66,18 @@ def generate_polizas_xml(
     Returns:
         UTF-8 XML string conforming to PolizasPeriodo_1_3.xsd.
     """
+    frappe.only_for(["System Manager", "Accounts Manager"])
+    if not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
+
     year = int(year)
     month = int(month)
     tipo_solicitud = (tipo_solicitud or "AF").upper()
+
+    if num_orden and not re.match(r'^[A-Za-z0-9/]{1,13}$', num_orden):
+        frappe.throw(_("NumOrden tiene formato inválido"))
+    if num_tramite and not re.match(r'^[A-Za-z0-9/]{1,14}$', num_tramite):
+        frappe.throw(_("NumTramite tiene formato inválido"))
 
     if tipo_solicitud not in VALID_TIPO_SOLICITUD:
         frappe.throw(

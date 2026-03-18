@@ -227,8 +227,8 @@ from erpnext_mexico.cfdi.nomina_builder import (  # noqa: E402
     _build_nomina_emisor,
 )
 
-from erpnext_mexico.payroll.overrides.salary_slip import (  # noqa: E402
-    _is_mexico_company,
+from erpnext_mexico.cfdi.cfdi_helpers import (  # noqa: E402
+    is_mexico_company as _is_mexico_company,
 )
 
 

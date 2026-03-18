@@ -11,6 +11,9 @@ from frappe.utils import getdate, get_first_day, get_last_day, fmt_money
 @frappe.whitelist()
 def get_dashboard_data(company=None):
     """Returns all dashboard metrics and data."""
+    if company and not frappe.has_permission("Company", "read", company):
+        frappe.throw(_("Sin permiso"), frappe.PermissionError)
+
     return {
         "metrics": get_metrics(company),
         "recent_cfdis": get_recent_cfdis(company),
@@ -60,16 +63,15 @@ def get_metrics(company: str | None = None) -> dict:
 
     today = getdate()
     first_day = get_first_day(today)
-    company_filter = f"AND company = %(company)s" if company else ""
 
     monthly_result = frappe.db.sql(
-        f"""
+        """
         SELECT COALESCE(SUM(grand_total), 0) AS total
         FROM `tabSales Invoice`
         WHERE docstatus = 1
           AND posting_date >= %(first_day)s
           AND posting_date <= %(today)s
-          {company_filter}
+          AND (%(company)s IS NULL OR company = %(company)s)
         """,
         {"first_day": first_day, "today": today, "company": company},
         as_dict=True,
@@ -111,10 +113,8 @@ def get_recent_cfdis(company: str | None = None, limit: int = 10) -> list:
 
 def get_monthly_data(company: str | None = None) -> list:
     """Get monthly CFDI counts for the last 6 months (for chart)."""
-    company_filter = "AND company = %(company)s" if company else ""
-
     data = frappe.db.sql(
-        f"""
+        """
         SELECT
             DATE_FORMAT(posting_date, '%%Y-%%m')                                    AS month,
             COUNT(*)                                                                  AS total,
@@ -123,7 +123,7 @@ def get_monthly_data(company: str | None = None) -> list:
         FROM `tabSales Invoice`
         WHERE docstatus = 1
           AND posting_date >= DATE_SUB(CURDATE(), INTERVAL 6 MONTH)
-          {company_filter}
+          AND (%(company)s IS NULL OR company = %(company)s)
         GROUP BY DATE_FORMAT(posting_date, '%%Y-%%m')
         ORDER BY month
         """,

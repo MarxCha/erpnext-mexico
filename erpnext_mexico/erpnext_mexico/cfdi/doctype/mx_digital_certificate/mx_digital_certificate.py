@@ -2,6 +2,7 @@
 # For license information, please see license.txt
 
 import frappe
+from frappe import _
 from frappe.model.document import Document
 
 
@@ -20,11 +21,18 @@ class MXDigitalCertificate(Document):
 
 	def parse_certificate(self):
 		"""Parse .cer file to extract certificate metadata using satcfdi."""
+		if not self.certificate_file:
+			return
+		if not self.certificate_file.lower().endswith('.cer'):
+			frappe.throw(_("El archivo de certificado debe tener extensión .cer"))
+
 		try:
 			from cryptography import x509
 			from cryptography.hazmat.backends import default_backend
 
 			cer_bytes = self._get_file_bytes(self.certificate_file)
+			if len(cer_bytes) > 10240:
+				frappe.throw(_("Archivo de certificado demasiado grande (máximo 10KB)"))
 
 			cert = x509.load_der_x509_certificate(cer_bytes, default_backend())
 
