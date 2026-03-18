@@ -218,7 +218,9 @@
             </div>
         </div>
         <div class="cfdi-header__cfdi">
-            <span class="cfdi-tipo">CFDI 4.0 — Factura</span><br>
+            {%- set tipo_map = {"I": "Factura", "E": "Nota de Crédito", "T": "Traslado", "N": "Nómina", "P": "Pago"} -%}
+            {%- set tipo_code = doc.get("mx_tipo_comprobante") or "I" -%}
+            <span class="cfdi-tipo">CFDI 4.0 — {{ tipo_map.get(tipo_code, "Factura") }}</span><br>
             <div class="cfdi-folio">
                 {% if doc.mx_serie %}{{ doc.mx_serie }}&nbsp;{% endif %}{{ doc.name }}
             </div>
@@ -354,8 +356,10 @@
                 {% endif %}
             </div>
             <div class="cfdi-stamp__qr">
+                {%- set qr_url = 'https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=' ~ doc.mx_cfdi_uuid ~ '&re=' ~ mx_rfc_emisor ~ '&rr=' ~ mx_rfc_receptor ~ '&tt=' ~ (doc.grand_total | string) ~ '&fe=' ~ (doc.get('mx_sello_cfdi') or '')[-8:] -%}
+                {%- set qr_data_uri = get_qr_code_data_uri(qr_url) -%}
                 <img
-                    src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={{ 'https://verificacfdi.facturaelectronica.sat.gob.mx/default.aspx?id=' ~ doc.mx_cfdi_uuid ~ '&re=' ~ mx_rfc_emisor ~ '&rr=' ~ mx_rfc_receptor ~ '&tt=' ~ (doc.grand_total | string) ~ '&fe=' ~ (doc.get('mx_sello_cfdi') or '')[-8:] | urlencode }}"
+                    src="{{ qr_data_uri }}"
                     alt="QR Verificación SAT"
                 >
                 <small>Verificar en SAT</small>

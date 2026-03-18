@@ -67,7 +67,11 @@ def generate_balanza_xml(
     root.set("Mes", f"{month:02d}")
     root.set("Anio", str(year))
     root.set("TipoEnvio", tipo_envio)
-    if tipo_envio == "C" and fecha_mod_bal:
+    if tipo_envio == "C":
+        if not fecha_mod_bal:
+            frappe.throw(
+                _("FechaModBal es requerida cuando TipoEnvio es 'C' (Complementaria).")
+            )
         root.set("FechaModBal", fecha_mod_bal)
     root.set(f"{{{XSI}}}schemaLocation", SCHEMA_LOCATION)
 

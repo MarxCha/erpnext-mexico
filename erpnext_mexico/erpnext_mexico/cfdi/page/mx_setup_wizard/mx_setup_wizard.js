@@ -26,12 +26,27 @@ class MXSetupWizard {
         ];
     }
 
+    _esc(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     async init() {
-        const r = await frappe.call({
-            method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.get_setup_data',
-        });
-        this.data = r.message;
-        this.render();
+        this.page.main.html('<div style="text-align:center;padding:48px;color:#6B7280;">Cargando...</div>');
+        try {
+            const r = await frappe.call({
+                method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.get_setup_data',
+            });
+            this.data = r.message;
+            this.render();
+        } catch (e) {
+            this.page.main.html('<div style="text-align:center;padding:48px;color:#DC2626;">Error cargando datos. Recarga la página.</div>');
+        }
     }
 
     render() {
@@ -93,7 +108,7 @@ class MXSetupWizard {
     step_company() {
         const companies = this.data.companies || [];
         let options = companies.map(c =>
-            `<option value="${c.name}" ${c.name === this.selected_company ? 'selected' : ''}>${c.name} (${c.abbr})</option>`
+            `<option value="${this._esc(c.name)}" ${c.name === this.selected_company ? 'selected' : ''}>${this._esc(c.name)} (${this._esc(c.abbr)})</option>`
         ).join('');
 
         return `
@@ -123,7 +138,7 @@ class MXSetupWizard {
         const regimes = this.data.fiscal_regimes || [];
 
         let regimeOptions = regimes.map(r =>
-            `<option value="${r.code}" ${company.mx_regimen_fiscal === r.code ? 'selected' : ''}>${r.code} - ${r.description}</option>`
+            `<option value="${this._esc(r.code)}" ${company.mx_regimen_fiscal === r.code ? 'selected' : ''}>${this._esc(r.code)} - ${this._esc(r.description)}</option>`
         ).join('');
 
         return `
@@ -131,18 +146,18 @@ class MXSetupWizard {
                 Datos Fiscales
             </h3>
             <p style="font-family: var(--mx-font-body); color: var(--mx-text-secondary); margin-bottom: 24px;">
-                Ingresa los datos fiscales de <strong>${this.selected_company}</strong> tal como aparecen en tu Constancia de Situación Fiscal del SAT.
+                Ingresa los datos fiscales de <strong>${this._esc(this.selected_company)}</strong> tal como aparecen en tu Constancia de Situación Fiscal del SAT.
             </p>
             <div style="display: grid; gap: 16px;">
                 <div>
                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">RFC</label>
-                    <input id="mx-wiz-rfc" type="text" value="${company.mx_rfc || ''}" maxlength="13"
+                    <input id="mx-wiz-rfc" type="text" value="${this._esc(company.mx_rfc || '')}" maxlength="13"
                         placeholder="Ej: EKU9003173C9"
                         style="width: 100%; padding: 10px 12px; border: 1px solid var(--mx-border); border-radius: var(--mx-radius-md); font-size: 14px; font-family: var(--mx-font-mono); text-transform: uppercase;">
                 </div>
                 <div>
                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">Nombre / Razón Social (como aparece en el SAT)</label>
-                    <input id="mx-wiz-nombre" type="text" value="${company.mx_nombre_fiscal || ''}"
+                    <input id="mx-wiz-nombre" type="text" value="${this._esc(company.mx_nombre_fiscal || '')}"
                         placeholder="Nombre fiscal exacto"
                         style="width: 100%; padding: 10px 12px; border: 1px solid var(--mx-border); border-radius: var(--mx-radius-md); font-size: 14px;">
                 </div>
@@ -155,7 +170,7 @@ class MXSetupWizard {
                 </div>
                 <div>
                     <label style="display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px;">Código Postal (Domicilio Fiscal)</label>
-                    <input id="mx-wiz-cp" type="text" value="${company.mx_lugar_expedicion || ''}" maxlength="5"
+                    <input id="mx-wiz-cp" type="text" value="${this._esc(company.mx_lugar_expedicion || '')}" maxlength="5"
                         placeholder="Ej: 06600"
                         style="width: 100%; padding: 10px 12px; border: 1px solid var(--mx-border); border-radius: var(--mx-radius-md); font-size: 14px; font-family: var(--mx-font-mono);">
                 </div>
@@ -173,10 +188,10 @@ class MXSetupWizard {
                 certList += `
                     <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--mx-border-light); border-radius: var(--mx-radius-md); margin-bottom: 8px;">
                         <div>
-                            <div style="font-weight: 600; font-size: 14px;">${c.mx_rfc}</div>
-                            <div style="font-size: 12px; color: var(--mx-text-muted); font-family: var(--mx-font-mono);">No. ${c.certificate_number || 'Sin parsear'}</div>
+                            <div style="font-weight: 600; font-size: 14px;">${this._esc(c.mx_rfc)}</div>
+                            <div style="font-size: 12px; color: var(--mx-text-muted); font-family: var(--mx-font-mono);">No. ${this._esc(c.certificate_number || 'Sin parsear')}</div>
                         </div>
-                        <span class="mx-status-pill mx-status-pill--${statusClass}">${c.status || 'Sin status'}</span>
+                        <span class="mx-status-pill mx-status-pill--${statusClass}">${this._esc(c.status || 'Sin status')}</span>
                     </div>
                 `;
             });
@@ -210,7 +225,7 @@ class MXSetupWizard {
 
         let pacList = '';
         pacs.forEach(p => {
-            pacList += `<option value="${p.name}" ${settings.pac_credentials === p.name ? 'selected' : ''}>${p.pac_name} ${p.is_sandbox ? '(Sandbox)' : '(Producción)'}</option>`;
+            pacList += `<option value="${this._esc(p.name)}" ${settings.pac_credentials === p.name ? 'selected' : ''}>${this._esc(p.pac_name)} ${p.is_sandbox ? '(Sandbox)' : '(Producción)'}</option>`;
         });
 
         return `
@@ -263,12 +278,13 @@ class MXSetupWizard {
         const settings = this.data.settings || {};
 
         const checks = [
-            { label: 'RFC configurado', done: !!company.mx_rfc, detail: company.mx_rfc || '—' },
-            { label: 'Razón Social', done: !!company.mx_nombre_fiscal, detail: company.mx_nombre_fiscal || '—' },
-            { label: 'Régimen Fiscal', done: !!company.mx_regimen_fiscal, detail: company.mx_regimen_fiscal || '—' },
-            { label: 'Código Postal', done: !!company.mx_lugar_expedicion, detail: company.mx_lugar_expedicion || '—' },
+            { label: 'RFC configurado', done: !!company.mx_rfc, detail: this._esc(company.mx_rfc || '—') },
+            { label: 'Razón Social', done: !!company.mx_nombre_fiscal, detail: this._esc(company.mx_nombre_fiscal || '—') },
+            { label: 'Régimen Fiscal', done: !!company.mx_regimen_fiscal, detail: this._esc(company.mx_regimen_fiscal || '—') },
+            { label: 'Código Postal', done: !!company.mx_lugar_expedicion, detail: this._esc(company.mx_lugar_expedicion || '—') },
             { label: 'CSD Activo', done: certs.some(c => c.status === 'Activo'), detail: certs.length ? `${certs.length} certificado(s)` : '—' },
-            { label: 'PAC Configurado', done: !!settings.pac_provider, detail: settings.pac_provider ? `${settings.pac_provider} (${settings.pac_environment})` : '—' },
+            { label: 'PAC Configurado', done: !!settings.pac_provider, detail: settings.pac_provider ? `${this._esc(settings.pac_provider)} (${this._esc(settings.pac_environment)})` : '—' },
+            { label: 'Catálogos SAT', done: (this.data.catalog_count || 0) > 0, detail: this.data.catalog_count ? `${this._esc(String(this.data.catalog_count))} registros` : 'Sin cargar' },
         ];
 
         const allDone = checks.every(c => c.done);
@@ -277,7 +293,7 @@ class MXSetupWizard {
             <div style="display: flex; align-items: center; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid var(--mx-border-light);">
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <span style="font-size: 18px;">${c.done ? '✅' : '⬜'}</span>
-                    <span style="font-size: 14px; font-weight: ${c.done ? '600' : '400'}; color: ${c.done ? 'var(--mx-text-primary)' : 'var(--mx-text-muted)'};">${c.label}</span>
+                    <span style="font-size: 14px; font-weight: ${c.done ? '600' : '400'}; color: ${c.done ? 'var(--mx-text-primary)' : 'var(--mx-text-muted)'};">${this._esc(c.label)}</span>
                 </div>
                 <span style="font-size: 13px; color: var(--mx-text-secondary); font-family: var(--mx-font-mono);">${c.detail}</span>
             </div>
@@ -302,6 +318,14 @@ class MXSetupWizard {
                     <div style="font-size: 14px; color: #92400E;">Algunos pasos están pendientes. Completa la configuración para comenzar a facturar.</div>
                 </div>
             `}
+            ${!this.data.catalog_count ? `
+                <div style="margin-top: 16px; padding: 12px; background: var(--mx-warning-bg); border-radius: var(--mx-radius-md); font-size: 12px; color: #92400E;">
+                    <strong>Catálogos SAT no cargados.</strong> Ejecute en terminal:<br>
+                    <code style="background: #FEF3C7; padding: 2px 6px; border-radius: 4px; font-size: 11px;">
+                        bench --site dev.localhost execute erpnext_mexico.sat_catalogs.catalog_importer.import_all
+                    </code>
+                </div>
+            ` : ''}
         `;
     }
 
@@ -357,43 +381,48 @@ class MXSetupWizard {
     }
 
     async save_step() {
-        switch (this.current_step) {
-            case 1:
-                await frappe.call({
-                    method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.save_company_fiscal',
-                    args: {
-                        company: this.selected_company,
-                        rfc: this.page.main.find('#mx-wiz-rfc').val().toUpperCase(),
-                        nombre_fiscal: this.page.main.find('#mx-wiz-nombre').val(),
-                        regimen_fiscal: this.page.main.find('#mx-wiz-regimen').val(),
-                        lugar_expedicion: this.page.main.find('#mx-wiz-cp').val(),
-                    }
-                });
-                // Refresh data
-                const r = await frappe.call({
-                    method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.get_setup_data',
-                });
-                this.data = r.message;
-                break;
-            case 3:
-                const pac = this.page.main.find('#mx-wiz-pac').val();
-                const env = this.page.main.find('#mx-wiz-env').val();
-                const cred = this.page.main.find('#mx-wiz-pac-cred').val();
-                if (pac) {
+        try {
+            switch (this.current_step) {
+                case 1:
                     await frappe.call({
-                        method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.save_pac_settings',
+                        method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.save_company_fiscal',
                         args: {
-                            pac_provider: pac,
-                            pac_environment: env,
-                            pac_credentials: cred || null,
+                            company: this.selected_company,
+                            rfc: this.page.main.find('#mx-wiz-rfc').val().toUpperCase(),
+                            nombre_fiscal: this.page.main.find('#mx-wiz-nombre').val(),
+                            regimen_fiscal: this.page.main.find('#mx-wiz-regimen').val(),
+                            lugar_expedicion: this.page.main.find('#mx-wiz-cp').val(),
                         }
                     });
-                    const r2 = await frappe.call({
+                    // Refresh data
+                    const r = await frappe.call({
                         method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.get_setup_data',
                     });
-                    this.data = r2.message;
-                }
-                break;
+                    this.data = r.message;
+                    break;
+                case 3:
+                    const pac = this.page.main.find('#mx-wiz-pac').val();
+                    const env = this.page.main.find('#mx-wiz-env').val();
+                    const cred = this.page.main.find('#mx-wiz-pac-cred').val();
+                    if (pac) {
+                        await frappe.call({
+                            method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.save_pac_settings',
+                            args: {
+                                pac_provider: pac,
+                                pac_environment: env,
+                                pac_credentials: cred || null,
+                            }
+                        });
+                        const r2 = await frappe.call({
+                            method: 'erpnext_mexico.cfdi.page.mx_setup_wizard.mx_setup_wizard.get_setup_data',
+                        });
+                        this.data = r2.message;
+                    }
+                    break;
+            }
+        } catch (e) {
+            frappe.show_alert({message: __('Error guardando: ') + (e.message || e), indicator: 'red'});
+            throw e; // re-throw to prevent step advancement
         }
     }
 }

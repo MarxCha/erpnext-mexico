@@ -145,13 +145,31 @@ def _build_record(row: dict, config: dict) -> dict:
     return record
 
 
-def _import_catalog(catalog_name: str, config: dict, chunk_size: int = 5000) -> int:
-    """Importa un catálogo SAT al DocType correspondiente."""
+def _import_catalog(
+    catalog_name: str,
+    config: dict,
+    chunk_size: int = 5000,
+    force_update: bool = False,
+) -> int:
+    """Importa un catálogo SAT al DocType correspondiente.
+
+    Args:
+        catalog_name: Nombre del catálogo en satcfdi (e.g. ``c_RegimenFiscal``).
+        config: Configuración de mapeo de campos del catálogo.
+        chunk_size: Número de registros por lote antes de hacer commit.
+        force_update: Si es True, actualiza registros existentes en lugar de saltarlos.
+
+    Returns:
+        Número total de registros en el DocType tras la importación.
+    """
     doctype = config["doctype"]
 
     existing_count = frappe.db.count(doctype)
-    if existing_count > 0:
-        frappe.msgprint(f"⚠ {doctype} ya tiene {existing_count} registros. Saltando.")
+    if existing_count > 0 and not force_update:
+        frappe.msgprint(
+            f"⚠ {doctype} ya tiene {existing_count} registros. "
+            "Use force_update=True para actualizar."
+        )
         return existing_count
 
     rows = _get_catalog_data(catalog_name)
@@ -166,7 +184,8 @@ def _import_catalog(catalog_name: str, config: dict, chunk_size: int = 5000) -> 
             records.append(record)
 
     total = len(records)
-    frappe.msgprint(f"Importando {total} registros en {doctype}...")
+    action = "Actualizando" if (existing_count > 0 and force_update) else "Importando"
+    frappe.msgprint(f"{action} {total} registros en {doctype}...")
 
     for i in range(0, total, chunk_size):
         chunk = records[i:i + chunk_size]
@@ -176,7 +195,18 @@ def _import_catalog(catalog_name: str, config: dict, chunk_size: int = 5000) -> 
                 doc.flags.ignore_permissions = True
                 doc.insert()
             except frappe.DuplicateEntryError:
-                pass
+                if force_update:
+                    try:
+                        key = rec.get("name") or rec.get("code")
+                        existing_doc = frappe.get_doc(doctype, key)
+                        existing_doc.update(rec)
+                        existing_doc.flags.ignore_permissions = True
+                        existing_doc.save()
+                    except Exception as update_err:
+                        frappe.log_error(
+                            f"Error actualizando {rec.get('code')} en {doctype}: {update_err}",
+                            title=f"Catalog Update Error: {doctype}",
+                        )
             except Exception as e:
                 frappe.log_error(
                     f"Error insertando {rec.get('code')} en {doctype}: {e}",
@@ -185,7 +215,7 @@ def _import_catalog(catalog_name: str, config: dict, chunk_size: int = 5000) -> 
         frappe.db.commit()
 
     final_count = frappe.db.count(doctype)
-    frappe.msgprint(f"✓ {doctype}: {final_count} registros importados")
+    frappe.msgprint(f"✓ {doctype}: {final_count} registros")
     return final_count
 
 
@@ -193,33 +223,48 @@ def _import_catalog(catalog_name: str, config: dict, chunk_size: int = 5000) -> 
 # Public API
 # ═══════════════════════════════════════════════════════════
 
-def import_small_catalogs():
-    """Importa catálogos pequeños (<100 registros cada uno)."""
+def import_small_catalogs(force_update: bool = False):
+    """Importa catálogos pequeños (<100 registros cada uno).
+
+    Args:
+        force_update: Si es True, actualiza registros existentes en lugar de saltarlos.
+    """
     results = {}
     for catalog_name, config in SMALL_CATALOGS.items():
-        count = _import_catalog(catalog_name, config)
+        count = _import_catalog(catalog_name, config, force_update=force_update)
         results[config["doctype"]] = count
     return results
 
 
-def import_heavy_catalogs():
-    """Importa catálogos pesados (miles de registros). Ejecutar con bench execute."""
+def import_heavy_catalogs(force_update: bool = False):
+    """Importa catálogos pesados (miles de registros). Ejecutar con bench execute.
+
+    Args:
+        force_update: Si es True, actualiza registros existentes en lugar de saltarlos.
+    """
     results = {}
     for catalog_name, config in HEAVY_CATALOGS.items():
-        count = _import_catalog(catalog_name, config, chunk_size=20_000)
+        count = _import_catalog(catalog_name, config, chunk_size=20_000, force_update=force_update)
         results[config["doctype"]] = count
     return results
 
 
-def import_all():
+def import_all(force_update: bool = False):
     """Importa todos los catálogos SAT.
-    Uso: bench --site dev.localhost execute erpnext_mexico.sat_catalogs.catalog_importer.import_all
+
+    Args:
+        force_update: Si es True, actualiza registros existentes en lugar de saltarlos.
+            Útil cuando el SAT publica nuevos códigos sin borrar el catálogo completo.
+
+    Uso:
+        bench --site dev.localhost execute erpnext_mexico.sat_catalogs.catalog_importer.import_all
+        bench --site dev.localhost execute erpnext_mexico.sat_catalogs.catalog_importer.import_all --kwargs '{"force_update": true}'
     """
     frappe.msgprint("═══ Importando catálogos SAT pequeños ═══")
-    small = import_small_catalogs()
+    small = import_small_catalogs(force_update=force_update)
 
     frappe.msgprint("═══ Importando catálogos SAT pesados ═══")
-    heavy = import_heavy_catalogs()
+    heavy = import_heavy_catalogs(force_update=force_update)
 
     results = {**small, **heavy}
     total = sum(results.values())

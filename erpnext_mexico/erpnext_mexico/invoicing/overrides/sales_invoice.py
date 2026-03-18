@@ -81,7 +81,7 @@ def stamp_sales_invoice(doc) -> None:
     4. Almacenar UUID, XML, PDF
     5. Registrar en MX CFDI Log
     """
-    from erpnext_mexico.cfdi.xml_builder import build_cfdi_from_sales_invoice, sign_cfdi
+    from erpnext_mexico.cfdi.xml_builder import build_cfdi_from_sales_invoice, sign_cfdi, get_cfdi_xml_bytes
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
 
     try:
@@ -93,7 +93,8 @@ def stamp_sales_invoice(doc) -> None:
 
         # 3. Timbrar con PAC
         pac = PACDispatcher.get_pac(doc.company)
-        result = pac.stamp(str(comprobante))
+        xml_bytes = get_cfdi_xml_bytes(comprobante)
+        result = pac.stamp(xml_bytes.decode("utf-8"))
 
         if not result.success:
             _handle_stamp_error(doc, result.error_message)
@@ -106,6 +107,10 @@ def stamp_sales_invoice(doc) -> None:
         doc.db_set("mx_cfdi_uuid", result.uuid, update_modified=False)
         doc.db_set("mx_cfdi_status", "Timbrado", update_modified=False)
         doc.db_set("mx_xml_file", xml_file.file_url, update_modified=False)
+        doc.db_set("mx_cfdi_fecha_timbrado", result.fecha_timbrado, update_modified=False)
+        doc.db_set("mx_sello_sat", result.sello_sat, update_modified=False)
+        doc.db_set("mx_no_certificado_sat", result.no_certificado_sat, update_modified=False)
+        doc.db_set("mx_cadena_original_tfd", result.cadena_original_tfd, update_modified=False)
 
         # 5. Registrar en log
         _create_cfdi_log(doc, result, "I")
@@ -208,8 +213,12 @@ def _get_cfdi_settings(company: str):
 
 
 def _handle_stamp_error(doc, error_message: str) -> None:
-    """Maneja errores de timbrado."""
-    doc.db_set("mx_cfdi_status", "Error", update_modified=False)
+    """Maneja errores de timbrado — persiste estado Error antes de lanzar excepción."""
+    # Use a separate commit to persist error status even when throw rolls back
+    frappe.db.set_value(
+        doc.doctype, doc.name, "mx_cfdi_status", "Error", update_modified=False
+    )
+    frappe.db.commit()
     frappe.log_error(
         message=error_message,
         title=f"Error timbrado CFDI: {doc.name}",

@@ -151,7 +151,14 @@ def _build_pagos(payment_entry) -> pago20.Pagos:
         )
 
     # forma_pago del Payment Entry (campo mx_forma_pago); default: 03 = Transferencia electrónica
-    forma_pago = getattr(payment_entry, "mx_forma_pago", None) or "03"
+    forma_pago = getattr(payment_entry, "mx_forma_pago", None)
+    if not forma_pago:
+        forma_pago = "03"  # Default: Transferencia electrónica
+        frappe.msgprint(
+            _("Forma de pago no especificada en el Payment Entry. Se usará '03 - Transferencia electrónica' por defecto."),
+            indicator="orange",
+            alert=True,
+        )
 
     # Moneda del pago — usar la moneda de la cuenta de origen
     moneda_pago = payment_entry.paid_from_account_currency or "MXN"
@@ -188,7 +195,7 @@ def _build_doctos_relacionados(payment_entry) -> list:
         inv_data = frappe.db.get_value(
             "Sales Invoice",
             ref.reference_name,
-            ["mx_metodo_pago", "mx_cfdi_uuid", "currency", "grand_total"],
+            ["mx_metodo_pago", "mx_cfdi_uuid", "currency", "grand_total", "mx_objeto_imp"],
             as_dict=True,
         )
 
@@ -214,8 +221,11 @@ def _build_doctos_relacionados(payment_entry) -> list:
         num_parcialidad = _get_num_parcialidad(ref.reference_name, payment_entry.name)
 
         grand_total = Decimal(str(inv_data.grand_total))
-        imp_saldo_ant = grand_total - Decimal(str(pagos_anteriores_total))
+        imp_saldo_ant = max(grand_total - pagos_anteriores_total, Decimal("0"))
         imp_pagado = Decimal(str(ref.allocated_amount))
+
+        # objeto_imp_dr: leer directamente de la factura; default "02" (con impuestos)
+        inv_objeto_imp = inv_data.mx_objeto_imp or "02"
 
         # Extraer serie y folio del nombre de la factura para el complemento
         serie, folio = _parse_serie_folio(ref.reference_name)
@@ -226,7 +236,7 @@ def _build_doctos_relacionados(payment_entry) -> list:
             num_parcialidad=num_parcialidad,
             imp_saldo_ant=imp_saldo_ant,
             imp_pagado=imp_pagado,
-            objeto_imp_dr="02",  # Sí objeto del impuesto (IVA incluido en la factura original)
+            objeto_imp_dr=inv_objeto_imp,
             serie=serie,
             folio=folio,
             # equivalencia_dr: solo si moneda de la factura difiere de la del pago
@@ -242,10 +252,13 @@ def _build_doctos_relacionados(payment_entry) -> list:
     return doctos
 
 
-def _get_pagos_anteriores(invoice_name: str, current_payment_name: str) -> float:
+def _get_pagos_anteriores(invoice_name: str, current_payment_name: str) -> Decimal:
     """
-    Suma los montos ya aplicados a la factura en pagos anteriores (docstatus=1,
-    excluyendo el pago actual).
+    Suma los montos ya aplicados a la factura en pagos anteriores, en la moneda
+    de la factura (allocated_amount en Payment Entry Reference es siempre en la
+    moneda del documento de referencia).
+
+    Excluye el pago actual y solo considera pagos confirmados (docstatus=1).
     """
     result = frappe.db.sql(
         """
@@ -259,7 +272,7 @@ def _get_pagos_anteriores(invoice_name: str, current_payment_name: str) -> float
         """,
         (invoice_name, current_payment_name),
     )
-    return result[0][0] if result else 0
+    return Decimal(str(result[0][0])) if result else Decimal("0")
 
 
 def _get_num_parcialidad(invoice_name: str, current_payment_name: str) -> int:
@@ -308,6 +321,10 @@ def _get_equivalencia_dr(moneda_dr: str, moneda_pago: str, payment_entry) -> Dec
     conversion = getattr(payment_entry, "source_exchange_rate", None)
     if conversion:
         return Decimal(str(conversion))
+    frappe.msgprint(
+        _("No se encontró tipo de cambio para la equivalencia DR. Se usará 1:1."),
+        indicator="orange",
+    )
     return Decimal("1")
 
 

@@ -143,6 +143,18 @@ def _aggregate_by_supplier(invoices: list) -> dict:
     """
     supplier_totals: dict = {}
 
+    # Batch load taxes for all invoices at once (avoids N+1 queries)
+    inv_names = [inv.name for inv in invoices]
+    all_taxes: dict = {}
+    if inv_names:
+        taxes_data = frappe.get_all(
+            "Purchase Taxes and Charges",
+            filters={"parent": ["in", inv_names]},
+            fields=["parent", "charge_type", "rate", "tax_amount", "description", "account_head"],
+        )
+        for tax in taxes_data:
+            all_taxes.setdefault(tax.parent, []).append(tax)
+
     for inv in invoices:
         supplier = inv.supplier
         if not supplier:
@@ -151,8 +163,7 @@ def _aggregate_by_supplier(invoices: list) -> dict:
         if supplier not in supplier_totals:
             supplier_totals[supplier] = _init_supplier_entry(supplier)
 
-        inv_doc = frappe.get_doc("Purchase Invoice", inv.name)
-        tax_detail = _classify_taxes(inv_doc)
+        tax_detail = _classify_taxes_from_list(all_taxes.get(inv.name, []), float(inv.net_total or 0))
 
         supplier_totals[supplier]["valor_16"] += tax_detail["base_16"]
         supplier_totals[supplier]["valor_8"] += tax_detail["base_8"]
@@ -171,7 +182,8 @@ def _init_supplier_entry(supplier: str) -> dict:
     supplier_data = frappe.db.get_value(
         "Supplier",
         supplier,
-        ["mx_rfc", "mx_tipo_tercero_diot", "mx_tipo_operacion_diot", "supplier_name"],
+        ["mx_rfc", "mx_tipo_tercero_diot", "mx_tipo_operacion_diot",
+         "supplier_name", "mx_nit_extranjero", "mx_pais_residencia", "mx_nacionalidad"],
         as_dict=True,
     ) or {}
 
@@ -181,6 +193,9 @@ def _init_supplier_entry(supplier: str) -> dict:
         "tipo_tercero": supplier_data.get("mx_tipo_tercero_diot") or "Nacional",
         "tipo_operacion": supplier_data.get("mx_tipo_operacion_diot") or "Otros",
         "nombre": supplier_data.get("supplier_name") or supplier,
+        "nit": supplier_data.get("mx_nit_extranjero") or "",
+        "pais_residencia": supplier_data.get("mx_pais_residencia") or "",
+        "nacionalidad": supplier_data.get("mx_nacionalidad") or "",
         "valor_16": 0.0,
         "valor_8": 0.0,
         "valor_0": 0.0,
@@ -189,10 +204,8 @@ def _init_supplier_entry(supplier: str) -> dict:
     }
 
 
-def _classify_taxes(inv_doc) -> dict:
-    """
-    Inspect a Purchase Invoice's taxes child table and classify base amounts
-    into the DIOT tax buckets.
+def _classify_taxes_from_list(taxes: list, net_total: float) -> dict:
+    """Classify taxes from a list of tax row dicts (batch-fetched).
 
     Returns:
         dict with keys: base_16, base_8, base_0, base_exento, iva_retenido
@@ -205,32 +218,30 @@ def _classify_taxes(inv_doc) -> dict:
         "iva_retenido": 0.0,
     }
 
-    net_total = float(inv_doc.net_total or 0)
-    taxes = getattr(inv_doc, "taxes", []) or []
-
     has_iva_16 = False
     has_iva_8 = False
     has_iva_0 = False
     iva_retenido_total = 0.0
 
     for tax in taxes:
-        rate = abs(float(tax.rate or 0))
-        amount = float(tax.tax_amount or 0)
-        description = (tax.description or "").upper()
-        account = (tax.account_head or "").upper()
+        rate = abs(float(tax.get("rate") or 0))
+        amount = float(tax.get("tax_amount") or 0)
+        description = (tax.get("description") or "").upper()
+        account = (tax.get("account_head") or "").upper()
 
         is_iva = "IVA" in description or "IVA" in account or "VALOR AGREGADO" in description
-
         if not is_iva:
             continue
 
-        charge_type = tax.charge_type or ""
+        charge_type = tax.get("charge_type") or ""
 
-        # Retención de IVA: amount is negative on the invoice, or description says retenido
+        # Retención de IVA: amount is negative on the invoice, or description says retenido.
+        # Avoid over-broad "RET" which matches unrelated words like "RETIRO" or "DIRECTA".
         is_retencion = (
             amount < 0
-            or "RETEN" in description
-            or "RET" in description
+            or "RETENCION" in description
+            or "RETENIDO" in description
+            or "RETENCIÓN" in description
         )
 
         if is_retencion and charge_type == "On Net Total":
@@ -260,6 +271,26 @@ def _classify_taxes(inv_doc) -> dict:
         result["base_exento"] = net_total
 
     return result
+
+
+def _classify_taxes(inv_doc) -> dict:
+    """Classify taxes from a Purchase Invoice document.
+
+    Wrapper around _classify_taxes_from_list for callers that have a full doc.
+
+    Returns:
+        dict with keys: base_16, base_8, base_0, base_exento, iva_retenido
+    """
+    taxes = []
+    for tax in (getattr(inv_doc, "taxes", []) or []):
+        taxes.append({
+            "charge_type": tax.charge_type,
+            "rate": tax.rate,
+            "tax_amount": tax.tax_amount,
+            "description": tax.description,
+            "account_head": tax.account_head,
+        })
+    return _classify_taxes_from_list(taxes, float(inv_doc.net_total or 0))
 
 
 def _build_diot_line(data: dict) -> str:

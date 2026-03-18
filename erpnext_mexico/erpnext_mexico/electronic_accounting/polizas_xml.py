@@ -154,10 +154,11 @@ def generate_polizas_xml(
             INNER JOIN `tabAccount` a ON a.name = gle.account
             WHERE gle.voucher_type = %(voucher_type)s
               AND gle.voucher_no   = %(voucher_no)s
+              AND gle.company      = %(company)s
               AND gle.is_cancelled = 0
             ORDER BY a.account_number, gle.creation
             """,
-            {"voucher_type": voucher.voucher_type, "voucher_no": voucher.voucher_no},
+            {"voucher_type": voucher.voucher_type, "voucher_no": voucher.voucher_no, "company": company},
             as_dict=True,
         )
 
@@ -178,6 +179,9 @@ def generate_polizas_xml(
                 },
             )
 
+        # Add CompNal (Comprobante Nacional) if the voucher has a CFDI UUID
+        _add_comp_nal(poliza_el, voucher, NAMESPACE)
+
     return etree.tostring(
         root,
         xml_declaration=True,
@@ -193,3 +197,57 @@ def _build_concepto(voucher: dict) -> str:
     """Build a readable concept string for a voucher (max 300 chars)."""
     label = VOUCHER_TYPE_LABELS.get(voucher.voucher_type, voucher.voucher_type)
     return f"{label}: {voucher.voucher_no}"[:300]
+
+
+def _add_comp_nal(poliza_el, voucher: dict, namespace: str) -> None:
+    """Add CompNal elements linking to CFDI UUIDs for the voucher.
+
+    CompNal (Comprobante Nacional) is an optional child of Transaccion that
+    links accounting vouchers to their CFDI timbrado UUID, required by SAT
+    during audit reviews (PolizasPeriodo_1_3.xsd).
+    """
+    # Only Sales Invoice and Purchase Invoice have CFDI UUIDs
+    uuid_field_map = {
+        "Sales Invoice": "mx_cfdi_uuid",
+        "Purchase Invoice": "mx_cfdi_uuid_proveedor",
+    }
+
+    uuid_field = uuid_field_map.get(voucher.voucher_type)
+    if not uuid_field:
+        return
+
+    uuid_value = frappe.db.get_value(
+        voucher.voucher_type, voucher.voucher_no, uuid_field
+    )
+    if not uuid_value:
+        return
+
+    # Get the RFC of the related party
+    rfc = ""
+    if voucher.voucher_type == "Sales Invoice":
+        customer = frappe.db.get_value("Sales Invoice", voucher.voucher_no, "customer")
+        if customer:
+            rfc = frappe.db.get_value("Customer", customer, "mx_rfc") or ""
+    elif voucher.voucher_type == "Purchase Invoice":
+        supplier = frappe.db.get_value("Purchase Invoice", voucher.voucher_no, "supplier")
+        if supplier:
+            rfc = frappe.db.get_value("Supplier", supplier, "mx_rfc") or ""
+
+    # Find all Transaccion elements under this Poliza and add CompNal to the first one
+    transacciones = poliza_el.findall(f"{{{namespace}}}Transaccion")
+    if transacciones:
+        attrib = {"UUID_CFDI": uuid_value}
+        if rfc:
+            attrib["RFC"] = rfc
+        # MontoTotal from the voucher
+        total = frappe.db.get_value(
+            voucher.voucher_type, voucher.voucher_no, "grand_total"
+        )
+        if total:
+            attrib["MontoTotal"] = f"{float(total):.2f}"
+
+        etree.SubElement(
+            transacciones[0],
+            f"{{{namespace}}}CompNal",
+            attrib=attrib,
+        )

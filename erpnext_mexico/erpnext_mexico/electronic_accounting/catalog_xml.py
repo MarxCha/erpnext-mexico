@@ -55,10 +55,11 @@ def generate_catalog_xml(company: str, year: int, month: int) -> str:
     root.set("Anio", str(year))
     root.set(f"{{{XSI}}}schemaLocation", SCHEMA_LOCATION)
 
-    # Retrieve all leaf accounts for this company, ordered by account_number
+    # Retrieve ALL accounts for this company (including group accounts), ordered by account_number.
+    # SAT requires the complete chart of accounts at all hierarchy levels.
     accounts = frappe.get_all(
         "Account",
-        filters={"company": company, "is_group": 0},
+        filters={"company": company},
         fields=[
             "name",
             "account_number",
@@ -71,10 +72,14 @@ def generate_catalog_xml(company: str, year: int, month: int) -> str:
         order_by="account_number, name",
     )
 
+    # Pre-compute all account levels in memory (eliminates N+1 queries)
+    parent_map = {acc.name: acc.parent_account for acc in accounts}
+    level_cache = _compute_all_levels(parent_map)
+
     for acc in accounts:
         num_cta = _safe_num_cta(acc)
         desc = (acc.account_name or acc.name)[:100]
-        nivel = _get_account_level(acc.name)
+        nivel = level_cache.get(acc.name, 1)
         natur = _get_naturaleza(acc)
         cod_agrup = _get_sat_grouping_code(acc)
 
@@ -147,11 +152,11 @@ def _get_sat_grouping_code(account: dict) -> str:
     }
 
     root_map = {
-        "Asset": "100",
-        "Liability": "200",
-        "Equity": "300",
-        "Income": "400",
-        "Expense": "500",
+        "Asset": "100.01",
+        "Liability": "200.01",
+        "Equity": "300.01",
+        "Income": "400.01",
+        "Expense": "500.01",
     }
 
     account_type = account.get("account_type") or ""
@@ -161,10 +166,54 @@ def _get_sat_grouping_code(account: dict) -> str:
     return root_map.get(account.get("root_type") or "", "100")
 
 
+def _compute_all_levels(parent_map: dict) -> dict:
+    """Compute account levels for all accounts using the parent map (no DB queries).
+
+    Args:
+        parent_map: Dict mapping account_name -> parent_account for all accounts.
+
+    Returns:
+        Dict mapping account_name -> depth level (1 = root, 2 = child of root, etc.).
+    """
+    cache: dict = {}
+
+    def _get_level(account_name: str) -> int:
+        if account_name in cache:
+            return cache[account_name]
+
+        level = 1
+        current = account_name
+        visited: set = set()
+
+        while True:
+            if current in visited:
+                break  # guard against circular references
+            visited.add(current)
+            parent = parent_map.get(current)
+            if not parent:
+                break
+            level += 1
+            current = parent
+            if level >= 10:
+                break
+
+        cache[account_name] = level
+        return level
+
+    for account_name in parent_map:
+        _get_level(account_name)
+
+    return cache
+
+
 def _get_account_level(account_name: str) -> int:
     """
     Traverse the parent chain to compute the depth level of an account.
     Level 1 = root, Level 2 = child of root, etc. Capped at 10.
+
+    .. deprecated::
+        Use ``_compute_all_levels`` with a pre-built parent map to avoid N+1 queries.
+        This function is kept for backwards compatibility with external callers.
     """
     level = 1
     current = account_name

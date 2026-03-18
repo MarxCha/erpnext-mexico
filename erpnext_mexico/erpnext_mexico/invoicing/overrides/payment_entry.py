@@ -20,6 +20,20 @@ def validate(doc, method=None):
     _check_ppd_invoices(doc)
 
 
+def on_cancel(doc, method=None):
+    """Al cancelar el Payment Entry: avisar sobre cancelación CFDI pendiente."""
+    if not _is_mexico_company(doc.company):
+        return
+
+    if doc.mx_pago_uuid and doc.mx_pago_status == "Timbrado":
+        frappe.msgprint(
+            _("El Complemento de Pago CFDI {0} debe cancelarse manualmente ante el SAT. "
+              "Use el botón 'Cancelar Complemento' en el pago original.").format(doc.mx_pago_uuid),
+            title=_("Cancelación CFDI pendiente"),
+            indicator="orange",
+        )
+
+
 def on_submit(doc, method=None):
     """
     Al enviar el Payment Entry: genera y timbra el Complemento de Pagos CFDI
@@ -59,6 +73,7 @@ def stamp_payment_complement(doc) -> None:
     """
     from erpnext_mexico.cfdi.payment_builder import build_payment_cfdi, sign_payment_cfdi
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
+    from erpnext_mexico.cfdi.xml_builder import get_cfdi_xml_bytes
 
     try:
         # 1. Construir CFDI tipo P
@@ -69,7 +84,8 @@ def stamp_payment_complement(doc) -> None:
 
         # 3. Timbrar con PAC
         pac = PACDispatcher.get_pac(doc.company)
-        result = pac.stamp(str(comprobante))
+        xml_bytes = get_cfdi_xml_bytes(comprobante)
+        result = pac.stamp(xml_bytes.decode("utf-8"))
 
         if not result.success:
             _handle_stamp_error(doc, result.error_message)
@@ -178,8 +194,12 @@ def _check_ppd_invoices(doc) -> None:
 
 
 def _handle_stamp_error(doc, error_message: str) -> None:
-    """Registra el error de timbrado y lanza excepción al usuario."""
-    doc.db_set("mx_pago_status", "Error", update_modified=False)
+    """Registra el error de timbrado — persiste estado Error antes de lanzar excepción."""
+    # Use a separate commit to persist error status even when throw rolls back
+    frappe.db.set_value(
+        doc.doctype, doc.name, "mx_pago_status", "Error", update_modified=False
+    )
+    frappe.db.commit()
     frappe.log_error(
         message=error_message,
         title=f"Error timbrado complemento pago: {doc.name}",

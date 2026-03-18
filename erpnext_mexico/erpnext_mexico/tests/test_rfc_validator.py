@@ -74,15 +74,25 @@ class TestRFCValidator(unittest.TestCase):
 
     def test_rfc_with_ampersand(self):
         """RFC con & es válido (empresas con & en razón social)."""
-        # &-containing RFCs exist, format check should accept them
+        # & is allowed in position 1-3 of persona moral RFCs
         is_valid, msg = validate_rfc("&AB050505ABC")
-        # May fail check digit but format should be accepted
+        # This should pass format check even if check digit fails
+        # The key test: it should not crash and should return a boolean
         self.assertIsInstance(is_valid, bool)
+        # More specific: & in first position is valid for persona moral format
+        self.assertTrue(
+            is_valid or "dígito verificador" in msg.lower(),
+            "Expected either valid or check-digit failure, got: " + msg,
+        )
 
     def test_rfc_with_enie(self):
         """RFC con Ñ es válido."""
         is_valid, msg = validate_rfc("ÑAB050505ABC")
         self.assertIsInstance(is_valid, bool)
+        self.assertTrue(
+            is_valid or "dígito verificador" in msg.lower(),
+            "Expected either valid or check-digit failure, got: " + msg,
+        )
 
     def test_unknown_type_short(self):
         self.assertEqual(get_rfc_type("SHORT"), "desconocido")

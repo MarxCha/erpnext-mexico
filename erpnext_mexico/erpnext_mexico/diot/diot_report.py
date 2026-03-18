@@ -13,7 +13,7 @@ import frappe
 from frappe import _
 from frappe.utils import flt
 
-from erpnext_mexico.diot.diot_generator import _classify_taxes, _init_supplier_entry
+from erpnext_mexico.diot.diot_generator import _classify_taxes_from_list, _init_supplier_entry
 
 
 def execute(filters=None):
@@ -52,25 +52,25 @@ def get_columns() -> list:
         },
         {
             "label": _("Base IVA 16%"),
-            "fieldname": "base_16",
+            "fieldname": "valor_16",
             "fieldtype": "Currency",
             "width": 140,
         },
         {
             "label": _("Base IVA 8%"),
-            "fieldname": "base_8",
+            "fieldname": "valor_8",
             "fieldtype": "Currency",
             "width": 130,
         },
         {
             "label": _("Base IVA 0%"),
-            "fieldname": "base_0",
+            "fieldname": "valor_0",
             "fieldtype": "Currency",
             "width": 130,
         },
         {
             "label": _("Exentos"),
-            "fieldname": "exento",
+            "fieldname": "valor_exento",
             "fieldtype": "Currency",
             "width": 130,
         },
@@ -117,6 +117,18 @@ def get_data(filters: dict) -> list:
     if not invoices:
         return []
 
+    # Batch load taxes for all invoices at once (avoids N+1 queries)
+    inv_names = [inv.name for inv in invoices]
+    all_taxes: dict = {}
+    if inv_names:
+        taxes_data = frappe.get_all(
+            "Purchase Taxes and Charges",
+            filters={"parent": ["in", inv_names]},
+            fields=["parent", "charge_type", "rate", "tax_amount", "description", "account_head"],
+        )
+        for tax in taxes_data:
+            all_taxes.setdefault(tax.parent, []).append(tax)
+
     # Aggregate by supplier — reuse generator logic for consistency
     supplier_totals: dict = {}
 
@@ -131,24 +143,13 @@ def get_data(filters: dict) -> list:
             entry["total_compras"] = 0.0
             supplier_totals[supplier] = entry
 
-        inv_doc = frappe.get_doc("Purchase Invoice", inv.name)
-        tax_detail = _classify_taxes(inv_doc)
+        tax_detail = _classify_taxes_from_list(all_taxes.get(inv.name, []), float(inv.net_total or 0))
 
-        supplier_totals[supplier]["base_16"] = (
-            supplier_totals[supplier].get("base_16", 0) + tax_detail["base_16"]
-        )
-        supplier_totals[supplier]["base_8"] = (
-            supplier_totals[supplier].get("base_8", 0) + tax_detail["base_8"]
-        )
-        supplier_totals[supplier]["base_0"] = (
-            supplier_totals[supplier].get("base_0", 0) + tax_detail["base_0"]
-        )
-        supplier_totals[supplier]["exento"] = (
-            supplier_totals[supplier].get("exento", 0) + tax_detail["base_exento"]
-        )
-        supplier_totals[supplier]["iva_retenido"] = (
-            supplier_totals[supplier].get("iva_retenido", 0) + tax_detail["iva_retenido"]
-        )
+        supplier_totals[supplier]["valor_16"] += tax_detail["base_16"]
+        supplier_totals[supplier]["valor_8"] += tax_detail["base_8"]
+        supplier_totals[supplier]["valor_0"] += tax_detail["base_0"]
+        supplier_totals[supplier]["valor_exento"] += tax_detail["base_exento"]
+        supplier_totals[supplier]["iva_retenido"] += tax_detail["iva_retenido"]
         supplier_totals[supplier]["total_compras"] += flt(inv.grand_total)
         supplier_totals[supplier]["invoice_count"] += 1
 
@@ -160,10 +161,10 @@ def get_data(filters: dict) -> list:
             "rfc": data.get("rfc", ""),
             "tipo_tercero": data.get("tipo_tercero", "Nacional"),
             "tipo_operacion": data.get("tipo_operacion", "Otros"),
-            "base_16": flt(data.get("base_16", 0), 2),
-            "base_8": flt(data.get("base_8", 0), 2),
-            "base_0": flt(data.get("base_0", 0), 2),
-            "exento": flt(data.get("exento", 0), 2),
+            "valor_16": flt(data.get("valor_16", 0), 2),
+            "valor_8": flt(data.get("valor_8", 0), 2),
+            "valor_0": flt(data.get("valor_0", 0), 2),
+            "valor_exento": flt(data.get("valor_exento", 0), 2),
             "iva_retenido": flt(data.get("iva_retenido", 0), 2),
             "total_compras": flt(data.get("total_compras", 0), 2),
             "invoice_count": data.get("invoice_count", 0),
@@ -176,10 +177,10 @@ def get_data(filters: dict) -> list:
             "rfc": "",
             "tipo_tercero": "",
             "tipo_operacion": "",
-            "base_16": sum(r["base_16"] for r in rows),
-            "base_8": sum(r["base_8"] for r in rows),
-            "base_0": sum(r["base_0"] for r in rows),
-            "exento": sum(r["exento"] for r in rows),
+            "valor_16": sum(r["valor_16"] for r in rows),
+            "valor_8": sum(r["valor_8"] for r in rows),
+            "valor_0": sum(r["valor_0"] for r in rows),
+            "valor_exento": sum(r["valor_exento"] for r in rows),
             "iva_retenido": sum(r["iva_retenido"] for r in rows),
             "total_compras": sum(r["total_compras"] for r in rows),
             "invoice_count": sum(r["invoice_count"] for r in rows),

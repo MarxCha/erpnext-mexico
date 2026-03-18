@@ -1,26 +1,25 @@
 """
-Adaptador PAC para Finkok/Quadrum usando la biblioteca satcfdi.
-PAC primario recomendado por costo-beneficio.
+Adaptador PAC para SW Sapien usando la biblioteca satcfdi.
+PAC secundario soportado.
 
-Sandbox: demo-facturacion.finkok.com
-Docs: wiki.finkok.com
+Sandbox: api.test.sw.com.mx
+Docs: developers.sw.com.mx
 
 API satcfdi:
-  - Finkok(username, password, environment=Environment.PRODUCTION|TEST)
-  - .stamp(cfdi: CFDI) -> Document(document_id, xml)
-  - .cancel(cfdi, reason: CancelReason, substitution_id, signer: Signer)
-      -> CancelationAcknowledgment(code, acuse)
+  - SWSapien(token=None, user=None, password=None, environment=Environment.PRODUCTION|TEST)
+  - .stamp(cfdi: CFDI, accept=Accept.XML) -> Document(document_id, xml)
+  - .cancel_comprobante(cancelation: Cancelacion) -> CancelationAcknowledgment(code, acuse)
 """
 
 from typing import Optional
 
 from satcfdi.cfdi import CFDI
 from satcfdi.models.signer import Signer
-from satcfdi.pacs.finkok import (
+from satcfdi.pacs.swsapien import (
     CancelReason,
     CancelationAcknowledgment,
     Environment,
-    Finkok,
+    SWSapien,
 )
 from satcfdi.pacs.finkok import cancelacion
 
@@ -47,19 +46,36 @@ def _map_cancel_reason(reason: str) -> CancelReason:
     return mapping[reason]
 
 
-class FinkokPAC(PACInterface):
-    """Implementación de PACInterface para Finkok vía satcfdi."""
+class SWSapienPAC(PACInterface):
+    """Implementación de PACInterface para SW Sapien vía satcfdi.
 
-    def __init__(self, username: str, password: str, environment: str = "Sandbox"):
-        self._client = Finkok(
-            username=username,
-            password=password,
-            environment=_map_environment(environment),
-        )
+    Supports both token-based and user/password authentication.
+    If token is provided, it takes precedence over user/password.
+    """
+
+    def __init__(
+        self,
+        user: str,
+        password: str,
+        environment: str = "Sandbox",
+        token: Optional[str] = None,
+    ):
+        env = _map_environment(environment)
+        if token:
+            self._client = SWSapien(
+                token=token,
+                environment=env,
+            )
+        else:
+            self._client = SWSapien(
+                user=user,
+                password=password,
+                environment=env,
+            )
 
     def stamp(self, xml_signed: str) -> StampResult:
         """
-        Timbrar CFDI firmado vía Finkok.
+        Timbrar CFDI firmado vía SW Sapien.
 
         Args:
             xml_signed: XML del CFDI firmado con CSD como string.
@@ -68,7 +84,7 @@ class FinkokPAC(PACInterface):
             StampResult con UUID, XML timbrado y metadatos.
         """
         try:
-            # satcfdi Finkok.stamp() espera un objeto CFDI, no un string
+            # satcfdi SWSapien.stamp() espera un objeto CFDI, no un string
             cfdi_obj = CFDI.from_string(
                 xml_signed.encode() if isinstance(xml_signed, str) else xml_signed
             )
@@ -93,7 +109,7 @@ class FinkokPAC(PACInterface):
         except Exception as e:
             import frappe
             frappe.log_error(
-                title="CFDI Stamp Error (Finkok)",
+                title="CFDI Stamp Error (SW Sapien)",
                 message=f"{type(e).__name__}: {str(e)}"
             )
             return StampResult(
@@ -118,7 +134,7 @@ class FinkokPAC(PACInterface):
         substitute_uuid: Optional[str] = None,
     ) -> CancelResult:
         """
-        Cancelar CFDI vía Finkok.
+        Cancelar CFDI vía SW Sapien.
 
         Construye un Signer desde el CSD y arma la solicitud de cancelación
         firmada usando satcfdi.pacs.finkok.cancelacion.
@@ -164,7 +180,7 @@ class FinkokPAC(PACInterface):
         except Exception as e:
             import frappe
             frappe.log_error(
-                title="CFDI Cancel Error (Finkok)",
+                title="CFDI Cancel Error (SW Sapien)",
                 message=f"{type(e).__name__}: {str(e)}"
             )
             return CancelResult(
@@ -182,8 +198,8 @@ class FinkokPAC(PACInterface):
         """
         Consultar estado de CFDI.
 
-        Nota: satcfdi.pacs.finkok.Finkok no expone get_status directamente.
-        Se delega al servicio SAT de consulta pública.
+        SW Sapien no expone get_status directamente en satcfdi.
+        Se delega al servicio SAT de consulta pública (igual que Finkok).
         """
         try:
             from satcfdi.verify import verify_cfdi
@@ -261,4 +277,4 @@ def _extract_tfd_data(xml_bytes: bytes) -> dict:
 # ── Registro automático en el dispatcher ──
 from ..pac_dispatcher import PACDispatcher  # noqa: E402
 
-PACDispatcher.register("Finkok", FinkokPAC)
+PACDispatcher.register("SW Sapien", SWSapienPAC)

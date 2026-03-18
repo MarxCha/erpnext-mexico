@@ -34,7 +34,7 @@ frappe.ui.form.on("Sales Invoice", {
 });
 
 function mx_add_cfdi_buttons(frm) {
-    if (!frm.doc.mx_rfc_company()) return;
+    if (!frm.doc.company) return;
 
     // Botón "Timbrar CFDI" — solo si submitted y no timbrado
     if (frm.doc.docstatus === 1 && frm.doc.mx_cfdi_status !== "Timbrado") {
@@ -134,11 +134,3 @@ function mx_show_cancel_dialog(frm) {
     });
     d.show();
 }
-
-// Helper: verificar si la empresa tiene RFC configurado
-frappe.ui.form.on("Sales Invoice", {
-    mx_rfc_company() {
-        return frappe.db.get_value("Company", cur_frm.doc.company, "mx_rfc")
-            .then(r => !!r.message?.mx_rfc);
-    }
-});

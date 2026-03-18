@@ -33,6 +33,9 @@ def get_setup_data():
         order_by="code",
     )
 
+    # Catalog count — used by verify step to warn if SAT catalogs are missing
+    catalog_count = frappe.db.count("MX Product Service Key")
+
     return {
         "companies": companies,
         "certificates": certificates,
@@ -44,11 +47,19 @@ def get_setup_data():
         },
         "pac_credentials": pac_credentials,
         "fiscal_regimes": fiscal_regimes,
+        "catalog_count": catalog_count,
     }
 
 @frappe.whitelist()
 def save_company_fiscal(company, rfc, nombre_fiscal, regimen_fiscal, lugar_expedicion):
     """Save fiscal data for a company."""
+    # Validate RFC format server-side (M-20)
+    if rfc:
+        from erpnext_mexico.utils.rfc_validator import validate_rfc
+        is_valid, msg = validate_rfc(rfc)
+        if not is_valid:
+            frappe.throw(msg, title="RFC inválido")
+
     doc = frappe.get_doc("Company", company)
     doc.mx_rfc = rfc
     doc.mx_nombre_fiscal = nombre_fiscal

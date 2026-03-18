@@ -48,7 +48,7 @@ def build_cfdi_from_sales_invoice(doc) -> cfdi40.Comprobante:
     )
 
     # Conceptos
-    conceptos = [_build_concepto(item) for item in doc.items]
+    conceptos = [_build_concepto(item, doc) for item in doc.items]
 
     # tipo_cambio debe ser Decimal (no str); solo se incluye si la moneda no es MXN
     tipo_cambio = (
@@ -63,13 +63,22 @@ def build_cfdi_from_sales_invoice(doc) -> cfdi40.Comprobante:
         conceptos=conceptos,
         forma_pago=doc.mx_forma_pago if doc.mx_metodo_pago == "PUE" else "99",
         metodo_pago=doc.mx_metodo_pago,
-        tipo_de_comprobante="I",
+        tipo_de_comprobante="E" if doc.is_return else "I",
         moneda=doc.currency or "MXN",
         tipo_cambio=tipo_cambio,
         exportacion=doc.mx_exportacion or "01",
         serie=doc.naming_series.replace(".", "").replace("-", "")[:25] if doc.naming_series else None,
         folio=doc.name[:40] if doc.name else None,
     )
+
+    # Para Notas de Crédito (tipo E) el SAT requiere el UUID del CFDI original
+    if doc.is_return and doc.return_against:
+        orig_uuid = frappe.db.get_value("Sales Invoice", doc.return_against, "mx_cfdi_uuid")
+        if orig_uuid:
+            comprobante.cfdi_relacionados = cfdi40.CfdiRelacionados(
+                tipo_relacion="01",  # Nota de crédito
+                cfdi_relacionado=[cfdi40.CfdiRelacionado(uuid=orig_uuid)]
+            )
 
     return comprobante
 
@@ -112,24 +121,59 @@ def get_cfdi_xml_bytes(comprobante: cfdi40.Comprobante, pretty_print: bool = Fal
     return comprobante.xml_bytes(pretty_print=pretty_print, xml_declaration=True)
 
 
-def _build_concepto(item) -> cfdi40.Concepto:
+def _build_concepto(item, doc=None) -> cfdi40.Concepto:
     """Construye un Concepto CFDI desde un Sales Invoice Item."""
     traslados = []
     retenciones = []
 
-    # Asumimos IVA 16% trasladado cuando ObjetoImp == "02"
-    # satcfdi calcula Importe automáticamente durante sign() a partir de Base * TasaOCuota
+    # satcfdi calcula Importe automáticamente durante sign() a partir de Base * TasaOCuota.
+    # item.amount en ERPNext ya es el monto neto después de descuento; NO restar discount_amount.
     if item.mx_objeto_imp == "02":
-        base = Decimal(str(item.amount)) - Decimal(str(item.discount_amount or 0))
-        traslados.append(
-            cfdi40.Traslado(
-                impuesto="002",  # IVA
-                tipo_factor="Tasa",
-                tasa_o_cuota=Decimal("0.160000"),
-                base=base,
-                # importe se calcula automáticamente en sign()
+        base = Decimal(str(item.amount))
+
+        # Tasa de IVA leída del template de impuestos; no hardcodeada al 16%
+        iva_rate = _get_iva_rate_for_item(doc)
+
+        if iva_rate is not None:
+            traslados.append(
+                cfdi40.Traslado(
+                    impuesto="002",  # IVA
+                    tipo_factor="Tasa",
+                    tasa_o_cuota=iva_rate,
+                    base=base,
+                    # importe se calcula automáticamente en sign()
+                )
             )
-        )
+
+        # Retenciones ISR / IVA leídas de la tabla de impuestos del documento
+        if doc:
+            for tax in (doc.taxes or []):
+                rate = float(tax.rate or 0)
+                desc = (tax.description or "").upper()
+                account = (tax.account_head or "").upper()
+
+                if rate < 0 or "RETEN" in desc:
+                    abs_rate = abs(rate)
+                    ret_base = base
+
+                    if "ISR" in desc or "ISR" in account:
+                        retenciones.append(
+                            cfdi40.Retencion(
+                                impuesto="001",  # ISR
+                                tipo_factor="Tasa",
+                                tasa_o_cuota=Decimal(str(abs_rate / 100)).quantize(Decimal("0.000001")),
+                                base=ret_base,
+                            )
+                        )
+                    elif "IVA" in desc or "IVA" in account:
+                        retenciones.append(
+                            cfdi40.Retencion(
+                                impuesto="002",  # IVA retenido
+                                tipo_factor="Tasa",
+                                tasa_o_cuota=Decimal(str(abs_rate / 100)).quantize(Decimal("0.000001")),
+                                base=ret_base,
+                            )
+                        )
 
     impuestos = None
     if traslados or retenciones:
@@ -151,6 +195,29 @@ def _build_concepto(item) -> cfdi40.Concepto:
         no_identificacion=item.item_code,
         impuestos=impuestos,
     )
+
+
+def _get_iva_rate_for_item(doc) -> Optional[Decimal]:
+    """
+    Extrae la tasa de IVA aplicable desde la tabla de impuestos del Sales Invoice.
+
+    Returns:
+        Decimal con la tasa en formato unitario (ej. 0.160000 para 16%),
+        o None si el documento no tiene IVA trasladado (operación exenta/tasa 0).
+    """
+    if not doc:
+        return Decimal("0.160000")
+
+    for tax in (doc.taxes or []):
+        rate = float(tax.rate or 0)
+        desc = (tax.description or "").upper()
+        account = (tax.account_head or "").upper()
+        is_iva = "IVA" in desc or "IVA" in account or "VALOR AGREGADO" in desc
+
+        if is_iva and rate > 0:
+            return Decimal(str(rate / 100)).quantize(Decimal("0.000001"))
+
+    return None  # Sin IVA — operación exenta o tasa 0%
 
 
 def _validate_fiscal_data(company, customer, doc) -> None:

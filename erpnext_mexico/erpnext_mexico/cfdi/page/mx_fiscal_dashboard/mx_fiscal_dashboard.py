@@ -25,7 +25,13 @@ def get_metrics(company: str | None = None) -> dict:
     if company:
         base_filters["company"] = company
 
-    total_invoices = frappe.db.count("Sales Invoice", base_filters) or 0
+    # M-19: only count invoices that are in the CFDI flow (non-blank status)
+    # so total_invoices matches the sum of all status buckets
+    cfdi_filters = {
+        **base_filters,
+        "mx_cfdi_status": ["!=", ""],
+    }
+    total_invoices = frappe.db.count("Sales Invoice", cfdi_filters) or 0
 
     stamped = (
         frappe.db.count(

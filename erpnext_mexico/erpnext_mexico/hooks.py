@@ -34,6 +34,7 @@ doc_events = {
     "Payment Entry": {
         "validate": "erpnext_mexico.invoicing.overrides.payment_entry.validate",
         "on_submit": "erpnext_mexico.invoicing.overrides.payment_entry.on_submit",
+        "on_cancel": "erpnext_mexico.invoicing.overrides.payment_entry.on_cancel",
     },
     "Purchase Invoice": {
         "validate": "erpnext_mexico.invoicing.overrides.purchase_invoice.validate",
@@ -41,9 +42,11 @@ doc_events = {
     "Salary Slip": {
         "validate": "erpnext_mexico.payroll.overrides.salary_slip.validate",
         "on_submit": "erpnext_mexico.payroll.overrides.salary_slip.on_submit",
+        "on_cancel": "erpnext_mexico.payroll.overrides.salary_slip.on_cancel",
     },
     "Delivery Note": {
         "on_submit": "erpnext_mexico.carta_porte.overrides.delivery_note.on_submit",
+        "on_cancel": "erpnext_mexico.carta_porte.overrides.delivery_note.on_cancel",
     },
 }
 
@@ -60,6 +63,7 @@ doctype_js = {
     "Company": "public/js/company.js",
     "Employee": "public/js/employee.js",
     "Delivery Note": "public/js/delivery_note.js",
+    "Salary Slip": "public/js/salary_slip.js",
 }
 
 # ─────────────────────────────────────────────
@@ -68,15 +72,15 @@ doctype_js = {
 fixtures = [
     {
         "dt": "Custom Field",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
+        "filters": [["fieldname", "like", "mx_%"]],
     },
     {
         "dt": "Property Setter",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
+        "filters": [["name", "like", "%mx_%"]],
     },
     {
         "dt": "Print Format",
-        "filters": [["module", "in", ["CFDI", "SAT Catalogs", "DIOT"]]],
+        "filters": [["module", "=", "ERPNext Mexico"]],
     },
 ]
 
