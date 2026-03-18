@@ -45,6 +45,19 @@ def create_cfdi_log(doc, result, cfdi_type: str) -> None:
     }).insert(ignore_permissions=True)
 
 
+def check_stamp_rate_limit(document_name: str, max_attempts: int = 10, window_seconds: int = 3600) -> None:
+    """Rate limit stamp attempts per document. Max 10 per hour by default."""
+    cache_key = f"cfdi_stamp_attempts:{document_name}"
+    attempts = int(frappe.cache().get(cache_key) or 0)
+    if attempts >= max_attempts:
+        frappe.throw(
+            _("Demasiados intentos de timbrado para {0}. Máximo {1} por hora.").format(
+                document_name, max_attempts
+            )
+        )
+    frappe.cache().set(cache_key, attempts + 1, expires_in_sec=window_seconds)
+
+
 def handle_stamp_error(doc, status_field: str, error_message: str) -> None:
     """Handle stamping errors — log and throw with generic message.
 

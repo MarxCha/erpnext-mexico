@@ -11,6 +11,7 @@ from erpnext_mexico.cfdi.cfdi_helpers import (
     save_cfdi_attachment,
     create_cfdi_log,
     handle_stamp_error,
+    check_stamp_rate_limit,
 )
 
 
@@ -137,6 +138,7 @@ def retry_stamp(sales_invoice_name: str) -> None:
     """Reintentar timbrado (llamado desde botón en UI)."""
     doc = frappe.get_doc("Sales Invoice", sales_invoice_name)
     doc.check_permission("submit")
+    check_stamp_rate_limit(sales_invoice_name)
 
     if doc.mx_cfdi_status == "Timbrado":
         frappe.throw(_("Esta factura ya está timbrada (UUID: {0})").format(doc.mx_cfdi_uuid))
@@ -149,6 +151,7 @@ def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "")
     """Cancelar CFDI ante el SAT."""
     doc = frappe.get_doc("Sales Invoice", sales_invoice_name)
     doc.check_permission("cancel")
+    check_stamp_rate_limit(f"cancel:{sales_invoice_name}")
 
     if doc.mx_cfdi_status != "Timbrado":
         frappe.throw(_("Solo se pueden cancelar CFDIs timbrados"))

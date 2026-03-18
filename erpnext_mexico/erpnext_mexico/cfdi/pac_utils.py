@@ -2,12 +2,40 @@
 Utilidades compartidas para adaptadores PAC.
 
 Funciones comunes usadas por todos los PACs soportados:
+- call_with_timeout: envuelve llamadas PAC con timeout vía ThreadPoolExecutor
 - extract_tfd_data: extrae metadatos del TimbreFiscalDigital
 - map_environment: convierte string de config al enum Environment
 - map_cancel_reason: convierte motivo SAT al enum CancelReason
 """
 
+import concurrent.futures
+
 from satcfdi.pacs import CancelReason, Environment
+
+
+def call_with_timeout(func, *args, timeout: int = 30, **kwargs):
+    """
+    Call a function with a timeout. Raises TimeoutError if exceeded.
+
+    Used to prevent PAC SOAP/REST calls from hanging indefinitely when
+    the external service is down or unresponsive, which would exhaust
+    gunicorn workers.
+
+    Args:
+        func: Callable to invoke.
+        *args: Positional arguments forwarded to func.
+        timeout: Maximum seconds to wait (default 30).
+        **kwargs: Keyword arguments forwarded to func.
+
+    Raises:
+        TimeoutError: If func does not complete within timeout seconds.
+    """
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
+        future = executor.submit(func, *args, **kwargs)
+        try:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError:
+            raise TimeoutError(f"PAC call timed out after {timeout} seconds")
 
 
 def extract_tfd_data(xml_bytes: bytes) -> dict:

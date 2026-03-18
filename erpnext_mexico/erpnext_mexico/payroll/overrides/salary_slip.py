@@ -16,6 +16,7 @@ from erpnext_mexico.cfdi.cfdi_helpers import (
     save_cfdi_attachment,
     create_cfdi_log,
     handle_stamp_error,
+    check_stamp_rate_limit,
 )
 
 
@@ -139,6 +140,7 @@ def retry_stamp_nomina(salary_slip_name: str) -> None:
     """
     doc = frappe.get_doc("Salary Slip", salary_slip_name)
     doc.check_permission("submit")
+    check_stamp_rate_limit(salary_slip_name)
 
     if doc.mx_nomina_status == "Timbrado":
         frappe.throw(

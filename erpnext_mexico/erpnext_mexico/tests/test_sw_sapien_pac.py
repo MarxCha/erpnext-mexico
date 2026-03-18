@@ -258,16 +258,18 @@ class TestSWSapienPACStampErrorPath(unittest.TestCase):
         if frappe_mod is not None and not callable(getattr(frappe_mod, "log_error", None)):
             frappe_mod.log_error = MagicMock()
 
+    def _stamp_with_error(self, error):
+        """Helper: call stamp() with CFDI.from_string raising the given error."""
+        pac = self._make_pac()
+        with patch("erpnext_mexico.cfdi.pacs.sw_sapien_pac.CFDI") as mock_cfdi, \
+             patch("frappe.log_error", MagicMock()):
+            mock_cfdi.from_string.side_effect = error
+            result = pac.stamp("<cfdi/>")
+        return result
+
     def test_stamp_exception_returns_stamp_result_with_success_false(self):
         """When the PAC client raises, stamp() must return StampResult(success=False)."""
-        self._ensure_frappe_log_error()
-        pac = self._make_pac()
-
-        # Patch CFDI.from_string in the satcfdi.cfdi stub module
-        from satcfdi import cfdi as cfdi_module
-        with patch.object(cfdi_module.CFDI, "from_string", side_effect=RuntimeError("parse error")):
-            result = pac.stamp("<cfdi/>")
-
+        result = self._stamp_with_error(RuntimeError("parse error"))
         self.assertFalse(result.success)
         self.assertEqual(result.uuid, "")
         self.assertEqual(result.xml_stamped, "")
@@ -275,25 +277,13 @@ class TestSWSapienPACStampErrorPath(unittest.TestCase):
 
     def test_stamp_exception_error_message_is_populated(self):
         """StampResult.error_message must contain the exception text on failure."""
-        self._ensure_frappe_log_error()
-        pac = self._make_pac()
-
-        from satcfdi import cfdi as cfdi_module
-        with patch.object(cfdi_module.CFDI, "from_string",
-                          side_effect=ConnectionError("Timeout connecting to sw.com.mx")):
-            result = pac.stamp("<cfdi/>")
-
+        result = self._stamp_with_error(ConnectionError("Timeout connecting to sw.com.mx"))
         self.assertFalse(result.success)
         self.assertIn("Timeout", result.error_message)
 
     def test_stamp_exception_stamps_result_fields_are_empty_strings(self):
         """On failure, all string fields in StampResult must be empty strings."""
-        self._ensure_frappe_log_error()
-        pac = self._make_pac()
-
-        from satcfdi import cfdi as cfdi_module
-        with patch.object(cfdi_module.CFDI, "from_string", side_effect=Exception("boom")):
-            result = pac.stamp("<cfdi/>")
+        result = self._stamp_with_error(Exception("boom"))
 
         self.assertEqual(result.fecha_timbrado, "")
         self.assertEqual(result.sello_sat, "")
@@ -313,23 +303,27 @@ class TestSWSapienPACCancelErrorPath(unittest.TestCase):
         pac._client = MagicMock()
         return pac
 
-    def test_cancel_invalid_motivo_returns_cancel_result_false(self):
-        """cancel() with invalid reason code must return CancelResult(success=False)."""
-        pac = self._make_pac()
-
-        # Ensure frappe stub has log_error before calling cancel()
+    def _ensure_frappe_log_error(self):
+        """Ensure sys.modules["frappe"] has log_error as a MagicMock."""
         frappe_mod = sys.modules.get("frappe")
         if frappe_mod is not None and not callable(getattr(frappe_mod, "log_error", None)):
             frappe_mod.log_error = MagicMock()
 
-        result = pac.cancel(
-            uuid="00000000-0000-0000-0000-000000000000",
-            rfc_emisor="EKU9003173C9",
-            certificate=b"",
-            key=b"",
-            password="test",
-            reason="99",  # invalid
-        )
+    def test_cancel_invalid_motivo_returns_cancel_result_false(self):
+        """cancel() with invalid reason code must return CancelResult(success=False)."""
+        pac = self._make_pac()
+
+        with patch("erpnext_mexico.cfdi.pacs.sw_sapien_pac._map_cancel_reason",
+                   side_effect=ValueError("Motivo de cancelación inválido: 99.")), \
+             patch("frappe.log_error", MagicMock()):
+            result = pac.cancel(
+                uuid="00000000-0000-0000-0000-000000000000",
+                rfc_emisor="EKU9003173C9",
+                certificate=b"",
+                key=b"",
+                password="test",
+                reason="99",
+            )
 
         self.assertFalse(result.success)
         self.assertIn("99", result.error_message)

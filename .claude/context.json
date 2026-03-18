@@ -1,0 +1,74 @@
+{
+  "project": "erpnext-mexico",
+  "last_session": "2026-03-18",
+  "status": "MVP Complete + Triple Audit Remediated",
+  "branch": "feat/sprints-6-7-hardening-nomina-carta-porte",
+  "test_results": {
+    "total": 196,
+    "passing": 192,
+    "failing": 4,
+    "note": "4 SW Sapien error-path tests are test-order dependent (pass individually)"
+  },
+  "sprints_completed": [
+    "S0: Foundation",
+    "UX: Design System + Dashboard + Wizard",
+    "S1: CFDI 4.0 timbrado (I, E)",
+    "S2: Complemento de Pagos 2.0",
+    "S3: DIOT 2025",
+    "S4: Contabilidad Electrónica",
+    "S5: Print Format",
+    "S6: Polish + N+1 optimization + 67 tests",
+    "S7: Carta Porte 3.1 + Nómina 1.2 + SW Sapien PAC",
+    "Hardening: Functional audit 27/50 → 43/50",
+    "Triple Audit: Code + Security + Quality remediation"
+  ],
+  "modules": {
+    "cfdi_core": { "status": "complete", "types": ["I", "E", "P", "T", "N"] },
+    "pagos_20": { "status": "complete" },
+    "nomina_12": { "status": "complete" },
+    "carta_porte_31": { "status": "complete" },
+    "diot_2025": { "status": "complete" },
+    "contabilidad_electronica": { "status": "complete" },
+    "sw_sapien_pac": { "status": "complete" },
+    "finkok_pac": { "status": "complete" },
+    "print_format": { "status": "complete" },
+    "dashboard": { "status": "complete" },
+    "setup_wizard": { "status": "complete" }
+  },
+  "architecture": {
+    "shared_modules": [
+      "cfdi/pac_utils.py — extract_tfd_data, map_environment, map_cancel_reason",
+      "cfdi/cfdi_helpers.py — is_mexico_company, get_cfdi_settings, save_cfdi_attachment, create_cfdi_log, handle_stamp_error"
+    ],
+    "custom_fields_prefix": "mx_",
+    "fixture_filter": "fieldname LIKE mx_%"
+  },
+  "security": {
+    "all_endpoints_permissioned": true,
+    "jinja_escaped": true,
+    "sql_parameterized": true,
+    "cert_validated": true
+  },
+  "deferred_items": [
+    "M-02: Rate limiting on stamp retry endpoints",
+    "M-06: CSP security headers (nginx config)",
+    "B-04: PAC call timeout configuration",
+    "B-05: Employee PII sanitization in error logs",
+    "4 test-order-dependent SW Sapien tests"
+  ],
+  "knownIssues": [
+    {
+      "id": "TEST-ORDER-001",
+      "description": "4 SW Sapien error-path tests fail in full suite but pass individually due to mock pollution from earlier test files",
+      "severity": "low",
+      "workaround": "Run test_sw_sapien_pac.py individually or fix mock isolation"
+    }
+  ],
+  "environment": {
+    "frappe": "15.102.1",
+    "erpnext": "15.101.0",
+    "python": "3.11",
+    "site": "dev.localhost",
+    "bench_path": "/Users/Marx/Projects/frappe-bench"
+  }
+}

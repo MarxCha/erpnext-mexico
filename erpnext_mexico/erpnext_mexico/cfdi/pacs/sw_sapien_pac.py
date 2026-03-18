@@ -19,6 +19,7 @@ from satcfdi.models.signer import Signer
 from satcfdi.pacs.swsapien import CancelationAcknowledgment, SWSapien
 
 from ..pac_interface import CancelResult, PACInterface, StampResult, StatusResult
+from ..pac_utils import call_with_timeout as _call_with_timeout
 from ..pac_utils import extract_tfd_data as _extract_tfd_data
 from ..pac_utils import map_cancel_reason as _map_cancel_reason
 from ..pac_utils import map_environment as _map_environment
@@ -66,7 +67,7 @@ class SWSapienPAC(PACInterface):
             cfdi_obj = CFDI.from_string(
                 xml_signed.encode() if isinstance(xml_signed, str) else xml_signed
             )
-            result = self._client.stamp(cfdi_obj)
+            result = _call_with_timeout(self._client.stamp, cfdi_obj, timeout=30)
 
             # result es Document(document_id: str, xml: bytes)
             xml_bytes = result.xml
@@ -143,7 +144,7 @@ class SWSapienPAC(PACInterface):
             )
             cancelacion_obj = cancelacion.Cancelacion(emisor=signer, folios=folio)
 
-            result = self._client.cancel_comprobante(cancelacion_obj)
+            result = _call_with_timeout(self._client.cancel_comprobante, cancelacion_obj, timeout=30)
 
             # result es CancelationAcknowledgment(code, acuse)
             acuse_str = ""

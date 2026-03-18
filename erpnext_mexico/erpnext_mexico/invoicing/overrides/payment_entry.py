@@ -11,6 +11,7 @@ from erpnext_mexico.cfdi.cfdi_helpers import (
     save_cfdi_attachment,
     create_cfdi_log,
     handle_stamp_error,
+    check_stamp_rate_limit,
 )
 
 
@@ -129,6 +130,7 @@ def retry_stamp_payment(payment_entry_name: str) -> None:
     """
     doc = frappe.get_doc("Payment Entry", payment_entry_name)
     doc.check_permission("submit")
+    check_stamp_rate_limit(payment_entry_name)
 
     if doc.mx_pago_status == "Timbrado":
         frappe.throw(
