@@ -14,6 +14,18 @@ class PACDispatcher:
     """Registry de PACs. Cada PAC se registra con su nombre y clase."""
 
     _registry: ClassVar[dict[str, type[PACInterface]]] = {}
+    _initialized: ClassVar[bool] = False
+
+    @classmethod
+    def _ensure_registered(cls) -> None:
+        """Lazy-load PAC adapters on first use."""
+        if cls._initialized:
+            return
+        from erpnext_mexico.cfdi.pacs.finkok_pac import FinkokPAC
+        from erpnext_mexico.cfdi.pacs.sw_sapien_pac import SWSapienPAC
+        cls._registry.setdefault("Finkok", FinkokPAC)
+        cls._registry.setdefault("SW Sapien", SWSapienPAC)
+        cls._initialized = True
 
     @classmethod
     def register(cls, name: str, pac_class: type[PACInterface]) -> None:
@@ -34,6 +46,7 @@ class PACDispatcher:
         Raises:
             frappe.ValidationError si el PAC no está configurado o registrado.
         """
+        cls._ensure_registered()
         settings = frappe.get_single("MX CFDI Settings")
 
         if not settings.pac_provider:
@@ -70,4 +83,5 @@ class PACDispatcher:
     @classmethod
     def available_pacs(cls) -> list[str]:
         """Lista de PACs registrados."""
+        cls._ensure_registered()
         return list(cls._registry.keys())
