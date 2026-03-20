@@ -56,10 +56,21 @@ def build_carta_porte_cfdi(delivery_note) -> cfdi40.Comprobante:
     receptor = _build_receptor(delivery_note)
     carta_porte_complemento = _build_carta_porte_complement(delivery_note, company)
 
+    # CFDI tipo T requiere un concepto fijo per SAT spec (mismo patrón que tipo P)
+    concepto_traslado = cfdi40.Concepto(
+        clave_prod_serv="78101800",
+        cantidad=Decimal("1"),
+        clave_unidad="E48",  # Unidad de servicio
+        descripcion="Servicio de transporte de carga",
+        valor_unitario=Decimal("0"),
+        objeto_imp="01",  # No objeto del impuesto
+    )
+
     comprobante = cfdi40.Comprobante(
         emisor=emisor,
         lugar_expedicion=company.mx_lugar_expedicion,
         receptor=receptor,
+        conceptos=[concepto_traslado],
         tipo_de_comprobante="T",
         moneda="XXX",
         exportacion="01",
@@ -255,10 +266,15 @@ def _build_ubicaciones(doc, company) -> list:
 
     distancia_km = Decimal(str(doc.mx_distancia_recorrida or "1"))
 
+    # Fecha de llegada estimada: misma fecha + 1 hora por simplicidad
+    from datetime import timedelta
+    fecha_hora_llegada = fecha_hora_salida + timedelta(hours=1)
+
     destino = Ubicacion(
         tipo_ubicacion="Destino",
         id_ubicacion="DE" + "000001",
         rfc_remitente_destinatario=customer_rfc,
+        fecha_hora_salida_llegada=fecha_hora_llegada,
         distancia_recorrida=distancia_km,
         domicilio=Domicilio(
             estado=getattr(doc, "mx_estado_destino", None) or "MEX",

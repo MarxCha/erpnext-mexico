@@ -126,10 +126,14 @@ def _build_concepto(item, doc=None) -> cfdi40.Concepto:
     traslados = []
     retenciones = []
 
+    # Para Notas de Crédito (tipo E), ERPNext usa qty negativa pero el SAT
+    # requiere valores positivos — el tipo "E" ya indica que es devolución.
+    is_return = getattr(doc, "is_return", False) if doc else False
+
     # satcfdi calcula Importe automáticamente durante sign() a partir de Base * TasaOCuota.
     # item.amount en ERPNext ya es el monto neto después de descuento; NO restar discount_amount.
     if item.mx_objeto_imp == "02":
-        base = Decimal(str(item.amount))
+        base = abs(Decimal(str(item.amount))) if is_return else Decimal(str(item.amount))
 
         # Tasa de IVA leída del template de impuestos; no hardcodeada al 16%
         iva_rate = _get_iva_rate_for_item(doc)
@@ -182,13 +186,16 @@ def _build_concepto(item, doc=None) -> cfdi40.Concepto:
             retenciones=retenciones or None,
         )
 
+    qty = abs(Decimal(str(item.qty))) if is_return else Decimal(str(item.qty))
+    rate = abs(Decimal(str(item.rate))) if is_return else Decimal(str(item.rate))
+
     return cfdi40.Concepto(
         clave_prod_serv=item.mx_clave_prod_serv,
-        cantidad=Decimal(str(item.qty)),
+        cantidad=qty,
         clave_unidad=item.mx_clave_unidad,
         unidad=item.uom,
         descripcion=item.description or item.item_name,
-        valor_unitario=Decimal(str(item.rate)),
+        valor_unitario=rate,
         # importe es calculado por satcfdi; no se pasa como str
         descuento=Decimal(str(item.discount_amount)) if item.discount_amount and float(item.discount_amount) > 0 else None,
         objeto_imp=item.mx_objeto_imp or "02",
