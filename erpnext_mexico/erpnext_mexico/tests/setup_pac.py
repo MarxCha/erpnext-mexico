@@ -1,4 +1,5 @@
 """Configure PAC credentials for testing."""
+import os
 import frappe
 
 
@@ -7,8 +8,8 @@ def run():
         doc = frappe.get_doc({
             "doctype": "MX PAC Credentials",
             "pac_name": "Finkok",
-            "pac_username": "marx_chavez@yahoo.com",
-            "pac_password": "fantok-cimde8-zofhyG",
+            "pac_username": os.environ.get("FINKOK_TEST_USER", ""),
+            "pac_password": os.environ.get("FINKOK_TEST_PASS", ""),
             "is_sandbox": 1,
         })
         doc.insert(ignore_permissions=True)

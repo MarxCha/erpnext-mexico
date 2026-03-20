@@ -2,6 +2,7 @@
 import frappe
 from frappe import _
 from frappe.utils import add_days, now_datetime
+from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
 
 
 def check_cancellation_status():
@@ -44,10 +45,12 @@ def check_cancellation_status():
             if current_status == "Timbrado":
                 frappe.log_error(
                     title="CFDI sin cancelar en SAT",
-                    message=_(
-                        "El documento {0} {1} fue cancelado en ERPNext pero el CFDI {2} "
-                        "sigue vigente en el SAT. Cancele manualmente."
-                    ).format(log.reference_doctype, log.reference_name, log.uuid),
+                    message=_sanitize(
+                        _(
+                            "El documento {0} {1} fue cancelado en ERPNext pero el CFDI {2} "
+                            "sigue vigente en el SAT. Cancele manualmente."
+                        ).format(log.reference_doctype, log.reference_name, log.uuid)
+                    ),
                 )
 
 
@@ -71,10 +74,12 @@ def check_certificate_expiry():
     for cert in expiring:
         frappe.log_error(
             title=_("Certificado CSD próximo a expirar"),
-            message=_(
-                "El certificado CSD {0} (RFC: {1}) expira el {2}. "
-                "Renuévelo antes de esa fecha para evitar interrupciones en el timbrado."
-            ).format(cert.name, cert.mx_rfc, cert.valid_to),
+            message=_sanitize(
+                _(
+                    "El certificado CSD {0} (RFC: {1}) expira el {2}. "
+                    "Renuévelo antes de esa fecha para evitar interrupciones en el timbrado."
+                ).format(cert.name, cert.mx_rfc, cert.valid_to)
+            ),
         )
 
     # Auto-expire certificates past their valid_to date

@@ -28,8 +28,8 @@ def run():
     from satcfdi.create.cfd import cfdi40
 
     pac = Finkok(
-        username="marx_chavez@yahoo.com",
-        password="fantok-cimde8-zofhyG",
+        username=os.environ.get("FINKOK_TEST_USER", ""),
+        password=os.environ.get("FINKOK_TEST_PASS", ""),
         environment=Environment.TEST,
     )
 

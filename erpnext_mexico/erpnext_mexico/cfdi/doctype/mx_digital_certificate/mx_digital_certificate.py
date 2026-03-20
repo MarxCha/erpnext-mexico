@@ -65,9 +65,10 @@ class MXDigitalCertificate(Document):
 			)
 		except Exception as e:
 			frappe.msgprint(
-				f"No se pudo parsear el certificado: {str(e)}",
+				_("No se pudo parsear el certificado. Verifique que sea un archivo .cer válido en formato DER."),
 				indicator="orange",
 			)
+			frappe.log_error(title="CSD Parse Error", message=str(e))
 
 	def _get_file_bytes(self, file_url: str) -> bytes:
 		"""Read file content from Frappe file system."""

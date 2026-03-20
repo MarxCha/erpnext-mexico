@@ -47,7 +47,7 @@ def create_cfdi_log(doc, result, cfdi_type: str) -> None:
 
 
 def check_stamp_rate_limit(document_name: str, max_attempts: int = 10, window_seconds: int = 3600) -> None:
-    """Rate limit stamp attempts per document. Max 10 per hour by default."""
+    """Rate limit stamp attempts per document and per user. Max 10/hour per document, 30/hour per user."""
     cache_key = f"cfdi_stamp_attempts:{document_name}"
     attempts = int(frappe.cache().get(cache_key) or 0)
     if attempts >= max_attempts:
@@ -57,6 +57,15 @@ def check_stamp_rate_limit(document_name: str, max_attempts: int = 10, window_se
             )
         )
     frappe.cache().set(cache_key, attempts + 1, expires_in_sec=window_seconds)
+
+    user_key = f"cfdi_stamp_user:{frappe.session.user}"
+    user_attempts = int(frappe.cache().get(user_key) or 0)
+    if user_attempts >= 30:  # max 30 PAC calls per user per hour
+        frappe.throw(
+            _("Límite de intentos por usuario excedido. Intente más tarde."),
+            title=_("Rate limit"),
+        )
+    frappe.cache().set(user_key, user_attempts + 1, expires_in_sec=window_seconds)
 
 
 def handle_stamp_error(doc, status_field: str, error_message: str) -> None:

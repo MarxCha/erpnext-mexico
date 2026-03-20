@@ -36,13 +36,13 @@ class PACDispatcher:
     def get_pac(cls, company: str) -> PACInterface:
         """
         Obtener instancia del PAC configurado para una empresa.
-        
+
         Args:
             company: Nombre de la empresa en ERPNext.
-            
+
         Returns:
             Instancia del PAC configurado.
-            
+
         Raises:
             frappe.ValidationError si el PAC no está configurado o registrado.
         """
@@ -74,8 +74,16 @@ class PACDispatcher:
 
         credentials = frappe.get_doc("MX PAC Credentials", settings.pac_credentials)
 
-        return cls._registry[pac_name](
-            username=credentials.pac_username,
+        pac_class = cls._registry[pac_name]
+
+        # SWSapienPAC expects `user` while FinkokPAC and others expect `username`.
+        # Inspect the constructor to pass the correct keyword argument.
+        import inspect
+        init_params = inspect.signature(pac_class.__init__).parameters
+        username_kwarg = "user" if "user" in init_params else "username"
+
+        return pac_class(
+            **{username_kwarg: credentials.pac_username},
             password=credentials.get_password("pac_password"),
             environment=settings.pac_environment or "Sandbox",
         )

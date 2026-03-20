@@ -77,7 +77,7 @@ def build_cfdi_from_sales_invoice(doc) -> cfdi40.Comprobante:
         if orig_uuid:
             comprobante.cfdi_relacionados = cfdi40.CfdiRelacionados(
                 tipo_relacion="01",  # Nota de crédito
-                cfdi_relacionado=[cfdi40.CfdiRelacionado(uuid=orig_uuid)]
+                cfdi_relacionado=[orig_uuid]
             )
 
     return comprobante
@@ -308,11 +308,16 @@ def _get_file_bytes(file_url: str) -> bytes:
     else:
         frappe.throw(_("Ruta de archivo no reconocida: {0}").format(file_url))
 
-    if not os.path.isfile(abs_path):
+    real_path = os.path.realpath(abs_path)
+    site_root = os.path.realpath(frappe.get_site_path())
+    if not real_path.startswith(site_root + os.sep) and real_path != site_root:
+        frappe.throw(_("Acceso denegado: ruta fuera del sitio"))
+
+    if not os.path.isfile(real_path):
         frappe.throw(
-            _("Archivo no encontrado en el servidor: {0}").format(abs_path),
+            _("Archivo no encontrado en el servidor: {0}").format(real_path),
             title=_("Archivo no encontrado"),
         )
 
-    with open(abs_path, "rb") as f:
+    with open(real_path, "rb") as f:
         return f.read()

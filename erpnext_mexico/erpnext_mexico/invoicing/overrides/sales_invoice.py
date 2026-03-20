@@ -3,6 +3,8 @@ Override para Sales Invoice — timbrado CFDI al validar/enviar.
 Se ejecuta vía doc_events en hooks.py.
 """
 
+import re
+
 import frappe
 from frappe import _
 from erpnext_mexico.cfdi.cfdi_helpers import (
@@ -14,6 +16,10 @@ from erpnext_mexico.cfdi.cfdi_helpers import (
     check_stamp_rate_limit,
 )
 from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
+
+_UUID_RE = re.compile(
+    r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$'
+)
 
 
 def validate(doc, method=None):
@@ -28,7 +34,7 @@ def validate(doc, method=None):
     # Auto-fill desde defaults del cliente
     if doc.customer and not doc.mx_uso_cfdi:
         doc.mx_uso_cfdi = frappe.db.get_value("Customer", doc.customer, "mx_default_uso_cfdi")
-    
+
     if doc.customer and not doc.mx_forma_pago:
         doc.mx_forma_pago = frappe.db.get_value("Customer", doc.customer, "mx_default_forma_pago")
 
@@ -83,7 +89,7 @@ def on_cancel(doc, method=None):
 def stamp_sales_invoice(doc) -> None:
     """
     Proceso completo de timbrado de una Sales Invoice.
-    
+
     1. Construir XML CFDI 4.0
     2. Firmar con CSD
     3. Enviar a PAC para timbrado
@@ -160,6 +166,9 @@ def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "")
     if reason == "01" and not substitute_uuid:
         frappe.throw(_("Motivo 01 requiere UUID del CFDI sustituto"))
 
+    if substitute_uuid and not _UUID_RE.match(substitute_uuid):
+        frappe.throw(_("UUID sustituto tiene formato inválido"))
+
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
     from erpnext_mexico.cfdi.xml_builder import _get_active_certificate, _get_file_bytes
 
@@ -197,13 +206,21 @@ def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "")
                 indicator="green",
             )
         else:
+            frappe.log_error(
+                title="Error cancelación CFDI",
+                message=_sanitize(
+                    f"Error al cancelar CFDI {doc.mx_cfdi_uuid}: {result.error_message}"
+                ),
+            )
             frappe.throw(
-                _("Error al cancelar CFDI: {0}").format(result.error_message),
+                _("Error al cancelar CFDI. Consulte el registro de errores. Referencia: {0}").format(
+                    doc.name
+                ),
                 title=_("Error de cancelación"),
             )
 
     except Exception as e:
         frappe.log_error(_sanitize(f"Error cancelando CFDI {doc.mx_cfdi_uuid}: {e}"))
-        frappe.throw(_("Error al cancelar CFDI: {0}").format(str(e)))
-
-
+        frappe.throw(_("Error al cancelar CFDI. Consulte el registro de errores. Referencia: {0}").format(
+            doc.name
+        ))
