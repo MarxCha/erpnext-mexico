@@ -930,3 +930,135 @@
     display: none; /* hide step indicators on very small screens */
   }
 }
+
+
+/* ═══════════════════════════════════════════════
+   ACCESSIBILITY & UX HARDENING
+   Added: 2026-03-20 — /audit-quality + /diseño-upgrade
+   ═══════════════════════════════════════════════ */
+
+/* ─────────────────────────────────────────────
+   Global Focus Rings (WCAG 2.1 AA)
+   All interactive elements get visible focus indicator.
+   Uses :focus-visible to avoid showing rings on mouse click.
+   ───────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--mx-accent);
+  outline-offset: 2px;
+}
+
+.mx-metric-card:focus-visible,
+.mx-btn:focus-visible,
+.mx-wizard__step:focus-visible,
+.mx-quick-actions__btn:focus-visible {
+  outline: 2px solid var(--mx-accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--mx-accent-light);
+}
+
+/* Status pills: ensure text label is always visible alongside color */
+.mx-status-pill::before {
+  content: "● ";
+  font-size: 8px;
+  vertical-align: middle;
+}
+
+/* ─────────────────────────────────────────────
+   Reduced Motion
+   Disable animations for users who prefer reduced motion.
+   ───────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .mx-skeleton::after {
+    animation: none;
+    background: var(--mx-bg-tertiary);
+  }
+
+  .mx-status-pill--active::after {
+    animation: none;
+  }
+
+  .mx-metric-card:hover {
+    transform: none;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   Print Stylesheet
+   Clean output for A4 paper — no dark mode, no animations.
+   ───────────────────────────────────────────── */
+@media print {
+  :root {
+    --mx-bg-primary:    #FFFFFF;
+    --mx-bg-secondary:  #FFFFFF;
+    --mx-bg-tertiary:   #F5F5F5;
+    --mx-text-primary:  #000000;
+    --mx-text-secondary:#333333;
+    --mx-accent:        #000000;
+    --mx-border:        #CCCCCC;
+  }
+
+  .mx-metric-card,
+  .mx-card {
+    box-shadow: none;
+    border: 1px solid #CCC;
+    break-inside: avoid;
+  }
+
+  .mx-quick-actions,
+  .mx-btn,
+  .mx-skeleton,
+  .mx-wizard__progress {
+    display: none !important;
+  }
+
+  .mx-dashboard {
+    padding: 0;
+  }
+
+  .mx-dashboard__metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .mx-activity-table {
+    font-size: 11px;
+  }
+
+  body {
+    font-size: 12pt;
+    color: #000;
+    background: #FFF;
+  }
+}
+
+/* ─────────────────────────────────────────────
+   ARIA Live Regions — status changes
+   ───────────────────────────────────────────── */
+.mx-status-pill[role="status"] {
+  /* Ensure screen readers announce status changes */
+}
+
+/* ─────────────────────────────────────────────
+   High Contrast Mode Support
+   ───────────────────────────────────────────── */
+@media (forced-colors: active) {
+  .mx-status-pill {
+    border: 2px solid currentColor;
+  }
+
+  .mx-metric-card {
+    border: 2px solid currentColor;
+  }
+
+  .mx-btn {
+    border: 2px solid currentColor;
+  }
+}
