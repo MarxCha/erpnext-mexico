@@ -68,62 +68,104 @@ class _FakeCancelReason(Enum):
 # Stub installer — runs once at module load
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _is_real_frappe(mod) -> bool:
+    """Return True only when mod is the actual Frappe package from a bench.
+
+    The real frappe is a types.ModuleType whose get_doc is a real function,
+    not a MagicMock.  A MagicMock responds True to all isinstance/hasattr
+    checks, so we must also verify the type is NOT MagicMock.
+    """
+    if not isinstance(mod, types.ModuleType):
+        return False
+    get_doc = getattr(mod, "get_doc", None)
+    if get_doc is None:
+        return False
+    # Real frappe's get_doc is a plain function, not a MagicMock
+    return not isinstance(get_doc, MagicMock)
+
+
 def _install_stubs() -> None:
     """Register lightweight stubs for frappe and satcfdi in sys.modules.
 
-    Skips registration when the real module is already present (e.g. when
-    running inside a live Frappe bench).
+    Design notes
+    ------------
+    1. frappe: We ALWAYS patch in-place on whatever stub is already in
+       sys.modules (or install fresh if absent).  We NEVER replace the
+       existing stub object with a new one — doing so would break any module
+       that already ran `import frappe` and captured a reference to the old
+       object (e.g. test_payment_builder.py's payment_builder module).
 
-    The stub hierarchy must match every `from X import Y` that any transitively
-    imported module under test performs at module-load time.  For satcfdi we
-    must register:
-      satcfdi
-      satcfdi.cfdi
-      satcfdi.create          (+ cancela sub-module used by finkok_pac)
-      satcfdi.create.cancela
-      satcfdi.create.cfd
-      satcfdi.create.cfd.cfdi40
-      satcfdi.models
-      satcfdi.models.signer
-      satcfdi.pacs
-      satcfdi.pacs.finkok
-      satcfdi.pacs.finkok.cancelacion
-      satcfdi.pacs.swsapien
-      satcfdi.verify
+       A MagicMock stub (from test_payment_builder.py) already has auto-
+       created attributes for everything — we just set specific ones to
+       ensure the PAC dispatcher tests can control them.
+
+    2. satcfdi.pacs and its sub-modules are ALWAYS force-installed (not via
+       setdefault).  Another test file (test_payment_builder.py) may have
+       already installed a partial satcfdi stub that lacks pacs.  Direct
+       assignment guarantees pac_utils.py can always do:
+         from satcfdi.pacs import CancelReason, Environment
+
+    3. All package-level stubs receive __path__ = [] so Python's import
+       machinery treats them as packages and allows sub-module imports from
+       them regardless of test execution order.
+
+    4. When satcfdi is already in sys.modules as a partial stub (without
+       pacs), its pacs attribute is back-patched in-place.
     """
-    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
-        return
-
     # -- frappe ---------------------------------------------------------------
-    frappe_stub = types.ModuleType("frappe")
+    # CRITICAL: Do NOT replace sys.modules["frappe"] if a stub already exists.
+    # Any module that ran `import frappe` has a direct reference to the existing
+    # object.  Replacing it would leave those modules pointing at a stale stub,
+    # so _mock_taxes / _set_sql_result in test_payment_builder would set
+    # attributes on the new object while payment_builder.py reads from the old.
+    existing_frappe = sys.modules.get("frappe")
+    if _is_real_frappe(existing_frappe):
+        # Running inside a live bench — leave the real frappe alone.
+        frappe_stub = existing_frappe
+    elif existing_frappe is not None:
+        # A stub was already installed by another test file — patch in-place.
+        frappe_stub = existing_frappe
+    else:
+        # No frappe at all — create a fresh MagicMock stub.
+        frappe_stub = MagicMock()
+        frappe_stub.__name__ = "frappe"
+        sys.modules["frappe"] = frappe_stub
+
+    # Patch the specific attributes this test file needs (idempotent on
+    # MagicMock since we always overwrite with fresh Mocks in setUp anyway).
     frappe_stub._ = lambda s: s
     frappe_stub.throw = MagicMock(side_effect=Exception("frappe.throw called"))
     frappe_stub.get_single = MagicMock()
     frappe_stub.get_cached_doc = MagicMock()
     frappe_stub.get_doc = MagicMock()
-    frappe_stub.db = MagicMock()
     frappe_stub.log_error = MagicMock()
     frappe_stub.cache = MagicMock(return_value=MagicMock())
-    frappe_stub.session = __import__("types").SimpleNamespace(user="test@example.com")
+    frappe_stub.session = types.SimpleNamespace(user="test@example.com")
     frappe_stub.whitelist = lambda *args, **kwargs: (
         (lambda fn: fn) if not args else args[0]
     )
-    sys.modules["frappe"] = frappe_stub
+    # db is set on the existing stub — ensure it is a MagicMock so sub-
+    # attribute access (.db.sql etc.) is controllable in PAC dispatcher tests.
+    if not isinstance(getattr(frappe_stub, "db", None), MagicMock):
+        frappe_stub.db = MagicMock()
 
     # -- erpnext_mexico.utils.sanitize ----------------------------------------
     # Must be in place before any PAC adapter module is imported.
-    sanitize_mod = types.ModuleType("erpnext_mexico.utils.sanitize")
-    sanitize_mod.sanitize_log_message = lambda s: s
-    utils_mod = types.ModuleType("erpnext_mexico.utils")
-    utils_mod.sanitize = sanitize_mod
-    erpnext_mx_mod = types.ModuleType("erpnext_mexico")
-    erpnext_mx_mod.utils = utils_mod
-    sys.modules.setdefault("erpnext_mexico", erpnext_mx_mod)
-    sys.modules.setdefault("erpnext_mexico.utils", utils_mod)
-    sys.modules.setdefault("erpnext_mexico.utils.sanitize", sanitize_mod)
+    if "erpnext_mexico.utils.sanitize" not in sys.modules:
+        sanitize_mod = types.ModuleType("erpnext_mexico.utils.sanitize")
+        sanitize_mod.sanitize_log_message = lambda s: s
+        utils_mod = types.ModuleType("erpnext_mexico.utils")
+        utils_mod.sanitize = sanitize_mod
+        erpnext_mx_mod = types.ModuleType("erpnext_mexico")
+        erpnext_mx_mod.utils = utils_mod
+        sys.modules.setdefault("erpnext_mexico", erpnext_mx_mod)
+        sys.modules.setdefault("erpnext_mexico.utils", utils_mod)
+        sys.modules["erpnext_mexico.utils.sanitize"] = sanitize_mod
 
     # -- satcfdi.pacs ---------------------------------------------------------
+    # Always force-install regardless of what is already in sys.modules.
     pacs_mod = types.ModuleType("satcfdi.pacs")
+    pacs_mod.__path__ = []  # marks as package
     pacs_mod.Environment = _FakeEnvironment
     pacs_mod.CancelReason = _FakeCancelReason
 
@@ -133,6 +175,7 @@ def _install_stubs() -> None:
     cancelacion_mod.Cancelacion = MagicMock()
 
     finkok_pac_mod = types.ModuleType("satcfdi.pacs.finkok")
+    finkok_pac_mod.__path__ = []  # marks as package
     finkok_pac_mod.cancelacion = cancelacion_mod
     finkok_pac_mod.CancelReason = _FakeCancelReason
     finkok_pac_mod.CancelationAcknowledgment = MagicMock()
@@ -141,6 +184,7 @@ def _install_stubs() -> None:
 
     # swsapien sub-package
     swsapien_mod = types.ModuleType("satcfdi.pacs.swsapien")
+    swsapien_mod.__path__ = []  # marks as package
     swsapien_mod.Environment = _FakeEnvironment
     swsapien_mod.CancelReason = _FakeCancelReason
     swsapien_mod.CancelationAcknowledgment = MagicMock()
@@ -149,10 +193,11 @@ def _install_stubs() -> None:
     pacs_mod.finkok = finkok_pac_mod
     pacs_mod.swsapien = swsapien_mod
 
-    sys.modules.setdefault("satcfdi.pacs", pacs_mod)
-    sys.modules.setdefault("satcfdi.pacs.finkok", finkok_pac_mod)
-    sys.modules.setdefault("satcfdi.pacs.finkok.cancelacion", cancelacion_mod)
-    sys.modules.setdefault("satcfdi.pacs.swsapien", swsapien_mod)
+    # Direct assignment — NOT setdefault — ensures these are always present
+    sys.modules["satcfdi.pacs"] = pacs_mod
+    sys.modules["satcfdi.pacs.finkok"] = finkok_pac_mod
+    sys.modules["satcfdi.pacs.finkok.cancelacion"] = cancelacion_mod
+    sys.modules["satcfdi.pacs.swsapien"] = swsapien_mod
 
     # -- satcfdi.create -------------------------------------------------------
     # finkok_pac.py does:  from satcfdi.create.cancela import cancelacion
@@ -168,9 +213,11 @@ def _install_stubs() -> None:
     cfdi40_mod.Comprobante = MagicMock()
 
     cfd_mod = types.ModuleType("satcfdi.create.cfd")
+    cfd_mod.__path__ = []  # marks as package
     cfd_mod.cfdi40 = cfdi40_mod
 
     create_mod = types.ModuleType("satcfdi.create")
+    create_mod.__path__ = []  # marks as package
     create_mod.cfd = cfd_mod
     create_mod.cancela = create_cancela_mod
 
@@ -188,6 +235,7 @@ def _install_stubs() -> None:
     signer_mod = types.ModuleType("satcfdi.models.signer")
     signer_mod.Signer = MagicMock()
     models_mod = types.ModuleType("satcfdi.models")
+    models_mod.__path__ = []  # marks as package
     models_mod.Signer = signer_mod.Signer
     sys.modules.setdefault("satcfdi.models.signer", signer_mod)
     sys.modules.setdefault("satcfdi.models", models_mod)
@@ -198,12 +246,26 @@ def _install_stubs() -> None:
     sys.modules.setdefault("satcfdi.verify", verify_mod)
 
     # -- satcfdi top-level ----------------------------------------------------
-    satcfdi_mod = types.ModuleType("satcfdi")
-    satcfdi_mod.pacs = pacs_mod
-    satcfdi_mod.create = create_mod
-    satcfdi_mod.cfdi = cfdi_mod
-    satcfdi_mod.models = models_mod
-    sys.modules.setdefault("satcfdi", satcfdi_mod)
+    # If another test file already installed a partial satcfdi stub (without
+    # pacs), patch it in-place so that `import satcfdi.pacs` resolves correctly.
+    # Only create a new stub when satcfdi is absent from sys.modules.
+    if "satcfdi" in sys.modules:
+        existing = sys.modules["satcfdi"]
+        existing.pacs = pacs_mod
+        if not hasattr(existing, "create"):
+            existing.create = create_mod
+        if not hasattr(existing, "cfdi"):
+            existing.cfdi = cfdi_mod
+        if not hasattr(existing, "models"):
+            existing.models = models_mod
+    else:
+        satcfdi_mod = types.ModuleType("satcfdi")
+        satcfdi_mod.__path__ = []  # marks as top-level package
+        satcfdi_mod.pacs = pacs_mod
+        satcfdi_mod.create = create_mod
+        satcfdi_mod.cfdi = cfdi_mod
+        satcfdi_mod.models = models_mod
+        sys.modules["satcfdi"] = satcfdi_mod
 
     # -- lxml.etree -----------------------------------------------------------
     try:

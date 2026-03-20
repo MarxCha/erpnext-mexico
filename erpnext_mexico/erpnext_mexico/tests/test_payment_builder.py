@@ -108,27 +108,71 @@ class _FakeComprobante:
 # Instalar stubs en sys.modules (antes de importar el módulo bajo prueba)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _is_real_frappe(mod) -> bool:
+    """Return True only when mod is the actual Frappe module (not a MagicMock stub).
+
+    The real frappe is a types.ModuleType; MagicMock is not.  This lets us
+    distinguish between a live Frappe bench environment and any stub installed
+    by another test file (e.g. test_pac_dispatcher.py installs a ModuleType stub
+    that also has get_doc, so we need the isinstance check too).
+    """
+    return isinstance(mod, types.ModuleType) and mod.__name__ == "frappe" and callable(
+        getattr(mod, "get_doc", None)
+    ) and not isinstance(getattr(mod, "get_doc", None), MagicMock)
+
+
 def _install_stubs():
     """Registra stubs ligeros para frappe y satcfdi.
 
-    Omite instalación si los módulos reales ya están cargados
-    (entorno bench de Frappe con módulos reales disponibles).
-    """
-    if "frappe" in sys.modules and hasattr(sys.modules["frappe"], "get_doc"):
-        return
+    Design notes
+    ------------
+    1. frappe: If the real Frappe is absent, we need a stub with db.sql,
+       db.get_value, get_cached_doc, utils.getdate.  Another test file may
+       have already installed a types.ModuleType frappe stub — we patch the
+       needed attributes onto it in-place rather than skipping entirely.
+       Only skip if the actual bench Frappe package is loaded.
 
-    # -- frappe stub ----------------------------------------------------------
-    frappe_stub = MagicMock()
-    frappe_stub._ = lambda s, *a: s
-    frappe_stub.throw = MagicMock(side_effect=Exception("frappe.throw called"))
-    frappe_stub.msgprint = MagicMock()
-    frappe_stub.utils.getdate = lambda s: date.fromisoformat(str(s))
-    frappe_stub.db.sql = MagicMock(return_value=[[Decimal("0")]])
-    frappe_stub.db.get_value = MagicMock(return_value=None)
-    frappe_stub.get_cached_doc = MagicMock()
-    sys.modules.setdefault("frappe", frappe_stub)
+    2. satcfdi.create.cfd.pago20: payment_builder.py does
+         from satcfdi.create.cfd import pago20
+       so pago20 must be present as an attribute on whatever satcfdi.create.cfd
+       is in sys.modules.  We always force-install pago20 (direct assignment)
+       and patch it onto the existing cfd module in-place.
+
+    3. All package-level stubs receive __path__ = [] so Python's import
+       machinery treats them as packages and allows sub-module imports from
+       them regardless of test execution order.
+    """
+    existing_frappe = sys.modules.get("frappe")
+
+    if existing_frappe is None or not _is_real_frappe(existing_frappe):
+        # Either no frappe stub at all, or another test file installed a stub
+        # that may lack the attributes payment_builder needs.  Install or patch.
+        if existing_frappe is None:
+            # Fresh install — use MagicMock so attribute auto-creation works
+            frappe_stub = MagicMock()
+            frappe_stub._ = lambda s, *a: s
+            frappe_stub.throw = MagicMock(side_effect=Exception("frappe.throw called"))
+            frappe_stub.msgprint = MagicMock()
+            sys.modules["frappe"] = frappe_stub
+        else:
+            # Patch existing stub in-place (could be types.ModuleType or MagicMock)
+            frappe_stub = existing_frappe
+
+        # Always set/override the attributes payment_builder.py needs
+        frappe_stub.utils = MagicMock()
+        frappe_stub.utils.getdate = lambda s: date.fromisoformat(str(s))
+        frappe_stub.db = MagicMock()
+        frappe_stub.db.sql = MagicMock(return_value=[[Decimal("0")]])
+        frappe_stub.db.get_value = MagicMock(return_value=None)
+        frappe_stub.get_cached_doc = MagicMock()
 
     # -- satcfdi stubs --------------------------------------------------------
+    # __path__ = [] is required on every package-level stub so that Python's
+    # import machinery treats the module as a package.  Without it, running
+    # test_pac_dispatcher.py after this file fails with:
+    #   ModuleNotFoundError: No module named 'satcfdi.pacs'; 'satcfdi' is not a package
+
+    # Build fresh pago20 stub (always needed by payment_builder.py)
     pago20_stub = types.ModuleType("satcfdi.create.cfd.pago20")
     pago20_stub.TrasladoDR = _FakeTrasladoDR
     pago20_stub.ImpuestosDR = _FakeImpuestosDR
@@ -143,28 +187,60 @@ def _install_stubs():
     cfdi40_stub.Comprobante = _FakeComprobante
 
     cfd_stub = types.ModuleType("satcfdi.create.cfd")
+    cfd_stub.__path__ = []  # marks as package so sub-module imports work
     cfd_stub.cfdi40 = cfdi40_stub
     cfd_stub.pago20 = pago20_stub
 
     create_stub = types.ModuleType("satcfdi.create")
+    create_stub.__path__ = []  # marks as package
     create_stub.cfd = cfd_stub
 
     models_stub = types.ModuleType("satcfdi.models")
+    models_stub.__path__ = []  # marks as package
     models_stub.Signer = MagicMock()
 
     satcfdi_stub = types.ModuleType("satcfdi")
+    satcfdi_stub.__path__ = []  # marks as top-level package
     satcfdi_stub.create = create_stub
     satcfdi_stub.models = models_stub
 
-    for name, mod in [
-        ("satcfdi", satcfdi_stub),
-        ("satcfdi.create", create_stub),
-        ("satcfdi.create.cfd", cfd_stub),
-        ("satcfdi.create.cfd.cfdi40", cfdi40_stub),
-        ("satcfdi.create.cfd.pago20", pago20_stub),
-        ("satcfdi.models", models_stub),
-    ]:
-        sys.modules.setdefault(name, mod)
+    # pago20 must always be reachable as an attribute — force-install these
+    # key modules with direct assignment (not setdefault).
+    # If another test file already installed satcfdi.create.cfd, we patch
+    # pago20 onto it in-place so `from satcfdi.create.cfd import pago20` works.
+    sys.modules["satcfdi.create.cfd.pago20"] = pago20_stub
+    sys.modules["satcfdi.create.cfd.cfdi40"] = cfdi40_stub
+
+    existing_cfd = sys.modules.get("satcfdi.create.cfd")
+    if existing_cfd is None:
+        sys.modules["satcfdi.create.cfd"] = cfd_stub
+    else:
+        # Patch the missing attrs onto whatever stub is already there
+        existing_cfd.pago20 = pago20_stub
+        existing_cfd.cfdi40 = cfdi40_stub
+        if not hasattr(existing_cfd, "__path__"):
+            existing_cfd.__path__ = []
+        cfd_stub = existing_cfd  # keep reference coherent
+
+    existing_create = sys.modules.get("satcfdi.create")
+    if existing_create is None:
+        sys.modules["satcfdi.create"] = create_stub
+    else:
+        existing_create.cfd = cfd_stub
+        if not hasattr(existing_create, "__path__"):
+            existing_create.__path__ = []
+
+    sys.modules.setdefault("satcfdi.models", models_stub)
+
+    existing_satcfdi = sys.modules.get("satcfdi")
+    if existing_satcfdi is None:
+        sys.modules["satcfdi"] = satcfdi_stub
+    else:
+        if not hasattr(existing_satcfdi, "__path__"):
+            existing_satcfdi.__path__ = []
+        existing_satcfdi.create = sys.modules["satcfdi.create"]
+        if not hasattr(existing_satcfdi, "models"):
+            existing_satcfdi.models = models_stub
 
 
 _install_stubs()
