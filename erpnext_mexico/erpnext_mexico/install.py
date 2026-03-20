@@ -519,7 +519,16 @@ CUSTOM_FIELDS = {
 
 def after_install():
     """Se ejecuta después de instalar la app."""
-    create_custom_fields(CUSTOM_FIELDS, update=True)
+    # Filter out custom fields for DocTypes that don't exist (e.g., Salary Slip without HRMS)
+    safe_fields = {}
+    for dt, fields in CUSTOM_FIELDS.items():
+        if frappe.db.exists("DocType", dt):
+            safe_fields[dt] = fields
+        else:
+            frappe.logger().warning(
+                f"Skipping custom fields for {dt} — DocType not found (install HRMS for payroll fields)"
+            )
+    create_custom_fields(safe_fields, update=True)
     setup_tax_templates()
     import_small_catalogs()
     install_print_formats()

@@ -1,0 +1,99 @@
+version: "3.8"
+
+x-frappe-env: &frappe-env
+  FRAPPE_SITE_NAME_HEADER: ${SITE_NAME:-erpnext-mexico.localhost}
+  DB_HOST: mariadb
+  DB_PORT: "3306"
+  REDIS_CACHE: redis://redis-cache:6379
+  REDIS_QUEUE: redis://redis-queue:6379
+  SOCKETIO_PORT: "9000"
+
+services:
+  # ─── Database ───────────────────────────────────────────
+  mariadb:
+    image: mariadb:10.11
+    container_name: erpnext-mx-mariadb
+    restart: unless-stopped
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-frappe_root_2024}
+    volumes:
+      - mariadb-data:/var/lib/mysql
+    ports:
+      - "3307:3306"
+    healthcheck:
+      test: mysqladmin ping -h localhost --password=${DB_ROOT_PASSWORD:-frappe_root_2024}
+      interval: 5s
+      retries: 10
+
+  # ─── Redis Cache ────────────────────────────────────────
+  redis-cache:
+    image: redis:7-alpine
+    container_name: erpnext-mx-redis-cache
+    restart: unless-stopped
+    volumes:
+      - redis-cache-data:/data
+
+  # ─── Redis Queue ────────────────────────────────────────
+  redis-queue:
+    image: redis:7-alpine
+    container_name: erpnext-mx-redis-queue
+    restart: unless-stopped
+    volumes:
+      - redis-queue-data:/data
+
+  # ─── Frappe/ERPNext Bench (Development) ─────────────────
+  frappe:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: erpnext-mx-frappe
+    restart: unless-stopped
+    environment:
+      <<: *frappe-env
+      SHELL: /bin/bash
+    volumes:
+      # Persist bench data
+      - frappe-bench-apps:/home/frappe/frappe-bench/apps
+      - frappe-bench-sites:/home/frappe/frappe-bench/sites
+      - frappe-bench-logs:/home/frappe/frappe-bench/logs
+      # Mount our custom app for live development
+      - ./erpnext_mexico:/home/frappe/frappe-bench/apps/erpnext_mexico
+    ports:
+      - "8080:8000"     # Frappe web
+      - "9002:9000"     # Socketio
+      - "6787:6787"     # Debugger
+    depends_on:
+      mariadb:
+        condition: service_healthy
+      redis-cache:
+        condition: service_started
+      redis-queue:
+        condition: service_started
+    stdin_open: true
+    tty: true
+    command: >
+      bash -c "
+        cd /home/frappe/frappe-bench &&
+        if ! grep -q erpnext_mexico sites/apps.txt 2>/dev/null; then
+          echo 'erpnext_mexico' >> sites/apps.txt;
+        fi &&
+        if [ -f apps/erpnext_mexico/pyproject.toml ]; then
+          echo '[boot] Installing erpnext_mexico...' &&
+          ./env/bin/pip install -e apps/erpnext_mexico --quiet;
+        fi &&
+        echo '--- Starting Frappe Development Server ---' &&
+        bench start
+      "
+
+volumes:
+  mariadb-data:
+  redis-cache-data:
+  redis-queue-data:
+  frappe-bench-apps:
+  frappe-bench-sites:
+  frappe-bench-logs:
