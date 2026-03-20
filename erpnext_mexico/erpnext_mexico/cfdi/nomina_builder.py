@@ -20,7 +20,6 @@ from frappe import _
 
 from satcfdi.create.cfd import cfdi40
 from satcfdi.create.cfd import nomina12
-from satcfdi.models import Signer
 
 
 # ── Tipos de percepción SAT (catálogo c_TipoPercepcion) ──
@@ -105,26 +104,9 @@ def build_nomina_cfdi(salary_slip) -> cfdi40.Comprobante:
 
 
 def sign_nomina_cfdi(comprobante: cfdi40.Comprobante, company: str) -> cfdi40.Comprobante:
-    """
-    Firma el CFDI de nómina con el CSD activo de la empresa.
-
-    Args:
-        comprobante: Objeto CFDI tipo N ya construido.
-        company: Nombre de la empresa en ERPNext.
-
-    Returns:
-        CFDI firmado con Sello, NoCertificado, Certificado.
-    """
-    from erpnext_mexico.cfdi.xml_builder import _get_active_certificate, _get_file_bytes
-
-    certificate = _get_active_certificate(company)
-    signer = Signer.load(
-        certificate=_get_file_bytes(certificate.certificate_file),
-        key=_get_file_bytes(certificate.key_file),
-        password=certificate.get_password("key_password"),
-    )
-    comprobante.sign(signer)
-    return comprobante
+    """Firma el CFDI de nómina con el CSD activo de la empresa."""
+    from erpnext_mexico.cfdi.cfdi_helpers import sign_any_cfdi
+    return sign_any_cfdi(comprobante, company)
 
 
 # ── Helpers privados ──────────────────────────────────────────────────────────
@@ -594,18 +576,9 @@ def _to_date(value) -> date:
 # ── Validaciones ──────────────────────────────────────────────────────────────
 
 def _validate_company_fiscal_data(company) -> None:
-    """Valida que la empresa tenga todos los datos fiscales requeridos para CFDI tipo N."""
-    errors = []
-    if not company.mx_rfc:
-        errors.append(_("RFC de la empresa no configurado"))
-    if not company.mx_nombre_fiscal:
-        errors.append(_("Nombre fiscal de la empresa no configurado"))
-    if not company.mx_regimen_fiscal:
-        errors.append(_("Régimen fiscal de la empresa no configurado"))
-    if not company.mx_lugar_expedicion:
-        errors.append(_("Lugar de expedición (CP) no configurado"))
-    if errors:
-        frappe.throw("<br>".join(errors), title=_("Datos fiscales de empresa incompletos"))
+    """Valida datos fiscales de la empresa (delegated to shared helper)."""
+    from erpnext_mexico.cfdi.cfdi_helpers import validate_company_fiscal_data
+    validate_company_fiscal_data(company)
 
 
 def _validate_employee_fiscal_data(employee, employee_name: str) -> None:

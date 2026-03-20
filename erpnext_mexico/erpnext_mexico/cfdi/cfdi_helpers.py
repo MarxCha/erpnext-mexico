@@ -68,6 +68,43 @@ def check_stamp_rate_limit(document_name: str, max_attempts: int = 10, window_se
     frappe.cache().set(user_key, user_attempts + 1, expires_in_sec=window_seconds)
 
 
+def validate_company_fiscal_data(company) -> None:
+    """Valida datos fiscales mínimos de la empresa para generar cualquier CFDI.
+
+    Consolidated from payment_builder, carta_porte_builder, nomina_builder.
+    """
+    errors = []
+    if not company.mx_rfc:
+        errors.append(_("RFC de la empresa no configurado"))
+    if not company.mx_nombre_fiscal:
+        errors.append(_("Nombre fiscal de la empresa no configurado"))
+    if not company.mx_regimen_fiscal:
+        errors.append(_("Régimen fiscal de la empresa no configurado"))
+    if not company.mx_lugar_expedicion:
+        errors.append(_("Lugar de expedición (CP) no configurado"))
+    if errors:
+        frappe.throw("<br>".join(errors), title=_("Datos fiscales incompletos"))
+
+
+def sign_any_cfdi(comprobante, company: str):
+    """Firma cualquier CFDI (I, E, P, N, T) con el CSD activo de la empresa.
+
+    Consolidated from payment_builder.sign_payment_cfdi,
+    carta_porte_builder.sign_carta_porte_cfdi, nomina_builder.sign_nomina_cfdi.
+    """
+    from erpnext_mexico.cfdi.xml_builder import _get_active_certificate, _get_file_bytes
+    from satcfdi.models import Signer
+
+    certificate = _get_active_certificate(company)
+    signer = Signer.load(
+        certificate=_get_file_bytes(certificate.certificate_file),
+        key=_get_file_bytes(certificate.key_file),
+        password=certificate.get_password("key_password"),
+    )
+    comprobante.sign(signer)
+    return comprobante
+
+
 def handle_stamp_error(doc, status_field: str, error_message: str) -> None:
     """Handle stamping errors — log and throw with generic message.
 
