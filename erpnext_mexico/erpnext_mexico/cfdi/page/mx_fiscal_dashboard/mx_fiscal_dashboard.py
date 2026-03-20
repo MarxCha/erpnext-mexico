@@ -6,9 +6,11 @@ Provee métricas, actividad reciente y estado de configuración fiscal.
 import frappe
 from frappe import _
 from frappe.utils import getdate, get_first_day, get_last_day, fmt_money
+from frappe.rate_limiter import rate_limit
 
 
 @frappe.whitelist()
+@rate_limit(limit=10, seconds=60)
 def get_dashboard_data(company=None):
     """Returns all dashboard metrics and data."""
     if company and not frappe.has_permission("Company", "read", company):

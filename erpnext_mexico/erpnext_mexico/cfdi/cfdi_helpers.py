@@ -1,6 +1,7 @@
 """Shared helpers for CFDI override modules."""
 import frappe
 from frappe import _
+from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
 
 
 def is_mexico_company(company: str) -> bool:
@@ -66,7 +67,7 @@ def handle_stamp_error(doc, status_field: str, error_message: str) -> None:
     persist if the transaction rolls back. Use the Error Log for tracking.
     """
     frappe.log_error(
-        message=error_message,
+        message=_sanitize(error_message),
         title=f"Error timbrado CFDI: {doc.name}",
     )
     frappe.throw(

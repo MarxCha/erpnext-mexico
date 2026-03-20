@@ -17,6 +17,7 @@ Campos 21-24: Vacíos (padding)
 import frappe
 from frappe import _
 from frappe.utils import getdate, get_last_day
+from frappe.rate_limiter import rate_limit
 
 
 # ──────────────────────────────────────────────────────────────────────────────
@@ -49,6 +50,7 @@ RFC_FIELD_WIDTH = 13
 # ──────────────────────────────────────────────────────────────────────────────
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def generate_diot(company: str, month: int, year: int) -> dict:
     """
     Generate DIOT TXT content for a given company/month/year.
@@ -119,6 +121,7 @@ def generate_diot(company: str, month: int, year: int) -> dict:
 
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def download_diot(company: str, month: int, year: int):
     """
     Generate DIOT and stream as a file download response.

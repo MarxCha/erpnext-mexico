@@ -1,7 +1,9 @@
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 @frappe.whitelist()
+@rate_limit(limit=10, seconds=60)
 def get_setup_data():
     """Get current setup state for the wizard."""
     frappe.only_for(["System Manager", "Accounts Manager"])
@@ -53,6 +55,7 @@ def get_setup_data():
     }
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def save_company_fiscal(company, rfc, nombre_fiscal, regimen_fiscal, lugar_expedicion):
     """Save fiscal data for a company."""
     frappe.only_for(["System Manager", "Accounts Manager"])
@@ -76,6 +79,7 @@ def save_company_fiscal(company, rfc, nombre_fiscal, regimen_fiscal, lugar_exped
     return {"success": True}
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def save_pac_settings(pac_provider, pac_environment, pac_credentials=None):
     """Save PAC configuration."""
     frappe.only_for("System Manager")

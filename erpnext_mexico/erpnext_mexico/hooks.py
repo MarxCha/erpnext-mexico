@@ -110,6 +110,16 @@ jinja = {
 # ─────────────────────────────────────────────
 # Accounting (Chart of Accounts, Tax Templates)
 # ─────────────────────────────────────────────
+# ─────────────────────────────────────────────
+# Security — CSP headers para páginas CFDI
+# ─────────────────────────────────────────────
+after_request = [
+    "erpnext_mexico.utils.security.add_security_headers",
+]
+
+# ─────────────────────────────────────────────
+# Accounting (Chart of Accounts, Tax Templates)
+# ─────────────────────────────────────────────
 regional_overrides = {
     "Mexico": {
         "erpnext.controllers.taxes_and_totals.get_regional_address_details": (

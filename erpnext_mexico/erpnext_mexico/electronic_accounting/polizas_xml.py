@@ -9,6 +9,7 @@ import re
 import frappe
 from frappe import _
 from frappe.utils import getdate, get_first_day, get_last_day
+from frappe.rate_limiter import rate_limit
 from lxml import etree
 
 
@@ -43,6 +44,7 @@ VOUCHER_TYPE_LABELS = {
 
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def generate_polizas_xml(
     company: str,
     year: int,

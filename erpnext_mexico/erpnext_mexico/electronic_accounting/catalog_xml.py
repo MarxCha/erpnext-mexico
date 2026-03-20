@@ -6,6 +6,7 @@ Referencia: http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/CatalogoCuentas/
 """
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 from lxml import etree
 
 
@@ -18,6 +19,7 @@ SCHEMA_LOCATION = (
 
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def generate_catalog_xml(company: str, year: int, month: int) -> str:
     """
     Generate Catálogo de Cuentas XML (Anexo 24).

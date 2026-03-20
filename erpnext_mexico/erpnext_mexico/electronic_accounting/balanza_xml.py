@@ -7,6 +7,7 @@ Referencia: http://www.sat.gob.mx/esquemas/ContabilidadE/1_3/BalanzaComprobacion
 import frappe
 from frappe import _
 from frappe.utils import getdate, get_first_day, get_last_day
+from frappe.rate_limiter import rate_limit
 from lxml import etree
 
 
@@ -22,6 +23,7 @@ VALID_TIPO_ENVIO = ("N", "C")
 
 
 @frappe.whitelist()
+@rate_limit(limit=5, seconds=60)
 def generate_balanza_xml(
     company: str,
     year: int,

@@ -23,6 +23,7 @@ from ..pac_utils import call_with_timeout as _call_with_timeout
 from ..pac_utils import extract_tfd_data as _extract_tfd_data
 from ..pac_utils import map_cancel_reason as _map_cancel_reason
 from ..pac_utils import map_environment as _map_environment
+from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
 
 
 class SWSapienPAC(PACInterface):
@@ -89,7 +90,7 @@ class SWSapienPAC(PACInterface):
             import frappe
             frappe.log_error(
                 title="CFDI Stamp Error (SW Sapien)",
-                message=f"{type(e).__name__}: {str(e)}"
+                message=_sanitize(f"{type(e).__name__}: {str(e)}")
             )
             return StampResult(
                 uuid="",
@@ -160,7 +161,7 @@ class SWSapienPAC(PACInterface):
             import frappe
             frappe.log_error(
                 title="CFDI Cancel Error (SW Sapien)",
-                message=f"{type(e).__name__}: {str(e)}"
+                message=_sanitize(f"{type(e).__name__}: {str(e)}")
             )
             return CancelResult(
                 success=False,

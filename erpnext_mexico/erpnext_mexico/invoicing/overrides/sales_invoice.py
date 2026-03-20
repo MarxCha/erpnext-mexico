@@ -13,6 +13,7 @@ from erpnext_mexico.cfdi.cfdi_helpers import (
     handle_stamp_error,
     check_stamp_rate_limit,
 )
+from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
 
 
 def validate(doc, method=None):
@@ -202,7 +203,7 @@ def cancel_cfdi(sales_invoice_name: str, reason: str, substitute_uuid: str = "")
             )
 
     except Exception as e:
-        frappe.log_error(f"Error cancelando CFDI {doc.mx_cfdi_uuid}: {e}")
+        frappe.log_error(_sanitize(f"Error cancelando CFDI {doc.mx_cfdi_uuid}: {e}"))
         frappe.throw(_("Error al cancelar CFDI: {0}").format(str(e)))
 
 

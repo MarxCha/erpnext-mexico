@@ -19,13 +19,11 @@
 **Resolución**: satcfdi incluye catálogos embebidos via SQLite. Acceso: `satcfdi.catalogs.select()`. Validado con Gemini. No es necesario descargar Excel del SAT.
 **Ver**: DEC-012
 
-## BLOCKER-004: Entorno Frappe de desarrollo local
-**Estado**: 🔴 Pendiente (bloquea TODO)
-**Impacto**: No se puede desarrollar sin bench funcionando
-**Acción requerida**: Configurar bench con Frappe v15 + ERPNext v15 en Mac Mini M4
-**Opciones**: Docker (frappe/frappe_docker) o bench nativo con pyenv
-**Owner**: Dev
-**ETA**: Sprint 0, días 1-2
+## ~~BLOCKER-004: Entorno Frappe de desarrollo local~~
+**Estado**: ✅ RESUELTO (2026-03-19)
+**Resolución**: Docker Compose con frappe/bench image. 4 contenedores: Frappe+ERPNext+erpnext_mexico, MariaDB 10.11, Redis x2.
+URL: http://localhost:8080. Setup wizard completado con Mexico, MXN, America/Mexico_City.
+Hot-reload activo via watchdog. 196/196 tests passing.
 
 ## ~~BLOCKER-005: Decisión sobre integración con HRMS~~
 **Estado**: ✅ RESUELTO (2026-03-16)

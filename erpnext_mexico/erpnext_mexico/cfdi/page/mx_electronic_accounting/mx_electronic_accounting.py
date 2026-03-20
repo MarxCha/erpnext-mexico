@@ -9,9 +9,11 @@ Individual XML generators live in:
 """
 import frappe
 from frappe import _
+from frappe.rate_limiter import rate_limit
 
 
 @frappe.whitelist()
+@rate_limit(limit=10, seconds=60)
 def get_companies() -> list[dict]:
     """Return active companies that have mx_rfc configured."""
     frappe.only_for(["System Manager", "Accounts Manager", "Accounts User"])

@@ -81,9 +81,10 @@ def extract_tfd_data(xml_bytes: bytes) -> dict:
         return data
     except Exception as e:
         import frappe
+        from erpnext_mexico.utils.sanitize import sanitize_log_message as _sanitize
         frappe.log_error(
             title="Error extracting TFD data",
-            message=str(e)
+            message=_sanitize(str(e))
         )
         return {}
 
