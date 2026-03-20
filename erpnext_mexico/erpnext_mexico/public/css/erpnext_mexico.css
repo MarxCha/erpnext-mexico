@@ -2,32 +2,38 @@
    ERPNext México — Design System
    MD Consultoría SC
 
-   Fonts: DM Sans (headings) + Source Sans 3 (body) + JetBrains Mono (code)
+   Typography: DM Serif Display (headings, KPIs) + DM Sans (body)
+   Palette: teal + charcoal (ERP product line)
    Scale: 4px base spacing, shadows over borders
+
+   Note: CFDI-Motor uses emerald+navy palette but SAME typography.
+   Typography unifies the MD Consultoría brand across products.
    ============================================================ */
 
 /* ─────────────────────────────────────────────
    Google Fonts Import
+   DM Serif Display: headings + KPI numbers (authority, fiscal trust)
+   DM Sans: body text (clean, modern readability)
    ───────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;0,9..40,900;1,9..40,400&family=Source+Sans+3:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,700;1,9..40,400&display=swap');
 
 
 /* ─────────────────────────────────────────────
    CSS Custom Properties — Light Mode
    ───────────────────────────────────────────── */
 :root {
-  /* Colors — 60% neutral, 30% secondary, 10% accent */
-  --mx-bg-primary:    #F8F9FB;
+  /* Colors — 60% neutral, 30% charcoal, 10% teal (ERP palette) */
+  --mx-bg-primary:    #F8FAFB;
   --mx-bg-secondary:  #FFFFFF;
-  --mx-bg-tertiary:   #F1F3F9;
+  --mx-bg-tertiary:   #F0F4F5;
 
-  --mx-text-primary:   #1A1D26;
-  --mx-text-secondary: #6B7280;
-  --mx-text-muted:     #9CA3AF;
+  --mx-text-primary:   #1C2526;  /* charcoal */
+  --mx-text-secondary: #5A6B6E;
+  --mx-text-muted:     #8D9FA3;
 
-  --mx-accent:       #0052CC;
-  --mx-accent-light: #E8F0FE;
-  --mx-accent-hover: #003D99;
+  --mx-accent:       #0D9488;    /* teal-600 */
+  --mx-accent-light: #E6F7F5;
+  --mx-accent-hover: #0A7A70;    /* teal-700 */
 
   --mx-success:    #10B981;
   --mx-success-bg: #ECFDF5;
@@ -67,10 +73,11 @@
   --mx-shadow-xl: 0 20px 25px -5px  rgba(0, 0, 0, 0.10),
                   0 10px 10px -5px  rgba(0, 0, 0, 0.04);
 
-  /* Typography */
-  --mx-font-heading: 'DM Sans',       -apple-system, BlinkMacSystemFont, sans-serif;
-  --mx-font-body:    'Source Sans 3', -apple-system, BlinkMacSystemFont, sans-serif;
-  --mx-font-mono:    'JetBrains Mono', 'Fira Code', monospace;
+  /* Typography — DM Serif Display (authority) + DM Sans (clarity) */
+  --mx-font-heading: 'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --mx-font-body:    'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --mx-font-kpi:     'DM Serif Display', Georgia, 'Times New Roman', serif;
+  --mx-font-mono:    'DM Sans', monospace;  /* No dedicated mono needed for ERP */
 }
 
 /* ─────────────────────────────────────────────
@@ -86,9 +93,9 @@
   --mx-text-secondary: #9CA3AF;
   --mx-text-muted:     #6B7280;
 
-  --mx-accent:       #4D8EFF;
-  --mx-accent-light: #1C2D4A;
-  --mx-accent-hover: #6BA3FF;
+  --mx-accent:       #2DD4BF;    /* teal-400 (bright for dark bg) */
+  --mx-accent-light: #1A2E2C;
+  --mx-accent-hover: #5EEAD4;    /* teal-300 */
 
   --mx-border:       #2D3140;
   --mx-border-light: #252836;
@@ -133,11 +140,12 @@
 }
 
 .mx-metric-card__value {
-  font-family: var(--mx-font-heading);
+  font-family: var(--mx-font-kpi);
   font-size: 28px;
   font-weight: 700;
   color: var(--mx-text-primary);
   line-height: 1.2;
+  /* DM Serif Display Bold: financial data looks authoritative, not decorative */
 }
 
 .mx-metric-card__change {
