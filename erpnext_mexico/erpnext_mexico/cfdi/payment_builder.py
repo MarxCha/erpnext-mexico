@@ -42,10 +42,21 @@ def build_payment_cfdi(payment_entry) -> cfdi40.Comprobante:
     receptor = _build_receptor(payment_entry)
     pagos_complemento = _build_pagos(payment_entry)
 
+    # CFDI tipo P requiere un concepto fijo per SAT spec
+    concepto_pago = cfdi40.Concepto(
+        clave_prod_serv="84111506",
+        cantidad=Decimal("1"),
+        clave_unidad="ACT",
+        descripcion="Pago",
+        valor_unitario=Decimal("0"),
+        objeto_imp="01",  # No objeto del impuesto
+    )
+
     comprobante = cfdi40.Comprobante(
         emisor=emisor,
         lugar_expedicion=company.mx_lugar_expedicion,
         receptor=receptor,
+        conceptos=[concepto_pago],
         tipo_de_comprobante="P",
         moneda="XXX",
         exportacion="01",
@@ -195,7 +206,7 @@ def _build_doctos_relacionados(payment_entry) -> list:
         inv_data = frappe.db.get_value(
             "Sales Invoice",
             ref.reference_name,
-            ["mx_metodo_pago", "mx_cfdi_uuid", "currency", "grand_total", "mx_objeto_imp"],
+            ["mx_metodo_pago", "mx_cfdi_uuid", "currency", "grand_total"],
             as_dict=True,
         )
 
@@ -224,11 +235,17 @@ def _build_doctos_relacionados(payment_entry) -> list:
         imp_saldo_ant = max(grand_total - pagos_anteriores_total, Decimal("0"))
         imp_pagado = Decimal(str(ref.allocated_amount))
 
-        # objeto_imp_dr: leer directamente de la factura; default "02" (con impuestos)
-        inv_objeto_imp = inv_data.mx_objeto_imp or "02"
+        # objeto_imp_dr: default "02" (Sí objeto del impuesto)
+        # mx_objeto_imp lives on Sales Invoice Item, not the parent
+        inv_objeto_imp = "02"
 
         # Extraer serie y folio del nombre de la factura para el complemento
         serie, folio = _parse_serie_folio(ref.reference_name)
+
+        # Build ImpuestosDR when ObjetoImpDR="02" (SAT CRP20246)
+        impuestos_dr = None
+        if inv_objeto_imp == "02":
+            impuestos_dr = _build_impuestos_dr(ref.reference_name, imp_pagado, grand_total)
 
         docto = pago20.DoctoRelacionado(
             id_documento=inv_data.mx_cfdi_uuid,
@@ -239,17 +256,62 @@ def _build_doctos_relacionados(payment_entry) -> list:
             objeto_imp_dr=inv_objeto_imp,
             serie=serie,
             folio=folio,
-            # equivalencia_dr: solo si moneda de la factura difiere de la del pago
             equivalencia_dr=_get_equivalencia_dr(
                 inv_data.currency or "MXN",
                 payment_entry.paid_from_account_currency or "MXN",
                 payment_entry,
             ),
-            # ImpSaldoInsoluto es calculado automáticamente por satcfdi
+            impuestos_dr=impuestos_dr,
         )
         doctos.append(docto)
 
     return doctos
+
+
+def _build_impuestos_dr(invoice_name: str, imp_pagado: Decimal, grand_total: Decimal) -> pago20.ImpuestosDR:
+    """
+    Construye ImpuestosDR para el DoctoRelacionado del complemento de pagos.
+    Calcula la proporción del IVA correspondiente al monto pagado.
+    """
+    # Get tax info from the original invoice
+    taxes = frappe.db.sql(
+        """
+        SELECT rate, description, account_head
+        FROM `tabSales Taxes and Charges`
+        WHERE parent = %s AND parenttype = 'Sales Invoice'
+        ORDER BY idx
+        """,
+        invoice_name,
+        as_dict=True,
+    )
+
+    traslados_dr = []
+    for tax in taxes:
+        rate = float(tax.rate or 0)
+        desc = (tax.description or "").upper()
+        account = (tax.account_head or "").upper()
+        is_iva = "IVA" in desc or "IVA" in account or "VALOR AGREGADO" in desc
+
+        if is_iva and rate > 0:
+            tasa = Decimal(str(rate / 100)).quantize(Decimal("0.000001"))
+            # Base proporcional al monto pagado vs total de la factura
+            # Base = imp_pagado / (1 + tasa) para extraer la base del IVA
+            base_dr = (imp_pagado / (1 + tasa)).quantize(Decimal("0.01"))
+            importe_dr = (base_dr * tasa).quantize(Decimal("0.01"))
+            traslados_dr.append(
+                pago20.TrasladoDR(
+                    base_dr=base_dr,
+                    impuesto_dr="002",  # IVA
+                    tipo_factor_dr="Tasa",
+                    tasa_o_cuota_dr=tasa,
+                    importe_dr=importe_dr,
+                )
+            )
+
+    if not traslados_dr:
+        return None
+
+    return pago20.ImpuestosDR(traslados_dr=traslados_dr)
 
 
 def _get_pagos_anteriores(invoice_name: str, current_payment_name: str) -> Decimal:
@@ -297,34 +359,28 @@ def _get_num_parcialidad(invoice_name: str, current_payment_name: str) -> int:
 
 def _get_tipo_cambio(payment_entry, moneda_pago: str):
     """
-    Retorna tipo_cambio_p si la moneda del pago difiere de MXN.
-    Para pagos en MXN retorna None.
+    Retorna tipo_cambio_p. satcfdi requiere un Decimal explícito
+    para calcular Totales (no acepta None).
     """
     if moneda_pago == "MXN":
-        return None
+        return Decimal("1")
     conversion = getattr(payment_entry, "source_exchange_rate", None) or getattr(
         payment_entry, "paid_from_account_exchange_rate", None
     )
-    if conversion and Decimal(str(conversion)) != Decimal("1"):
+    if conversion:
         return Decimal(str(conversion))
-    return None
+    return Decimal("1")
 
 
-def _get_equivalencia_dr(moneda_dr: str, moneda_pago: str, payment_entry) -> Decimal | None:
+def _get_equivalencia_dr(moneda_dr: str, moneda_pago: str, payment_entry) -> Decimal:
     """
-    Retorna equivalencia_dr cuando la moneda de la factura difiere de la del pago.
-    Cuando son iguales retorna None (satcfdi asume 1:1).
+    Retorna equivalencia_dr. SAT CRP20277 requiere "1" cuando MonedaDR == MonedaP.
     """
     if moneda_dr == moneda_pago:
-        return None
-    # Usar el tipo de cambio del pago como aproximación
+        return Decimal("1")
     conversion = getattr(payment_entry, "source_exchange_rate", None)
     if conversion:
         return Decimal(str(conversion))
-    frappe.msgprint(
-        _("No se encontró tipo de cambio para la equivalencia DR. Se usará 1:1."),
-        indicator="orange",
-    )
     return Decimal("1")
 
 

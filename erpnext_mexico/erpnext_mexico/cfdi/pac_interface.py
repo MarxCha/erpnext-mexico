@@ -5,7 +5,7 @@ Implementa Strategy Pattern para permitir selección de PAC por empresa.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Union
 
 
 @dataclass
@@ -43,13 +43,15 @@ class PACInterface(ABC):
     """Interfaz base que todo adaptador de PAC debe implementar."""
 
     @abstractmethod
-    def stamp(self, xml_signed: str) -> StampResult:
+    def stamp(self, cfdi_signed: Union[str, "cfdi40.Comprobante"]) -> StampResult:
         """
-        Enviar XML firmado al PAC para timbrado fiscal.
-        
+        Enviar CFDI firmado al PAC para timbrado fiscal.
+
         Args:
-            xml_signed: XML del CFDI firmado con CSD (con atributo Sello).
-            
+            cfdi_signed: Objeto Comprobante firmado (preferido) o XML string.
+                         Pasar el objeto evita el roundtrip string→CFDI.from_string()
+                         que puede alterar la firma y causar error 305.
+
         Returns:
             StampResult con UUID, XML timbrado y metadatos del timbre.
         """

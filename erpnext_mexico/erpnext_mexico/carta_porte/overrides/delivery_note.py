@@ -64,7 +64,6 @@ def stamp_carta_porte(doc) -> None:
     """
     from erpnext_mexico.cfdi.carta_porte_builder import build_carta_porte_cfdi, sign_carta_porte_cfdi
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
-    from erpnext_mexico.cfdi.xml_builder import get_cfdi_xml_bytes
 
     try:
         # 1. Construir CFDI tipo T con complemento CartaPorte 3.1
@@ -73,10 +72,9 @@ def stamp_carta_porte(doc) -> None:
         # 2. Firmar con CSD
         comprobante = sign_carta_porte_cfdi(comprobante, doc.company)
 
-        # 3. Timbrar con PAC
+        # 3. Timbrar con PAC — pasar Comprobante directo (no XML string)
         pac = PACDispatcher.get_pac(doc.company)
-        xml_bytes = get_cfdi_xml_bytes(comprobante)
-        result = pac.stamp(xml_bytes.decode("utf-8"))
+        result = pac.stamp(comprobante)
 
         if not result.success:
             handle_stamp_error(doc, "mx_carta_porte_status", result.error_message)

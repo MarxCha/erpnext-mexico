@@ -190,7 +190,7 @@ def _build_concepto(item, doc=None) -> cfdi40.Concepto:
         descripcion=item.description or item.item_name,
         valor_unitario=Decimal(str(item.rate)),
         # importe es calculado por satcfdi; no se pasa como str
-        descuento=Decimal(str(item.discount_amount)) if item.discount_amount else None,
+        descuento=Decimal(str(item.discount_amount)) if item.discount_amount and float(item.discount_amount) > 0 else None,
         objeto_imp=item.mx_objeto_imp or "02",
         no_identificacion=item.item_code,
         impuestos=impuestos,

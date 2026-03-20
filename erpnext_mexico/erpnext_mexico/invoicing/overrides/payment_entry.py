@@ -81,7 +81,6 @@ def stamp_payment_complement(doc) -> None:
     """
     from erpnext_mexico.cfdi.payment_builder import build_payment_cfdi, sign_payment_cfdi
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
-    from erpnext_mexico.cfdi.xml_builder import get_cfdi_xml_bytes
 
     try:
         # 1. Construir CFDI tipo P
@@ -90,10 +89,9 @@ def stamp_payment_complement(doc) -> None:
         # 2. Firmar con CSD
         comprobante = sign_payment_cfdi(comprobante, doc.company)
 
-        # 3. Timbrar con PAC
+        # 3. Timbrar con PAC — pasar Comprobante directo (no XML string)
         pac = PACDispatcher.get_pac(doc.company)
-        xml_bytes = get_cfdi_xml_bytes(comprobante)
-        result = pac.stamp(xml_bytes.decode("utf-8"))
+        result = pac.stamp(comprobante)
 
         if not result.success:
             handle_stamp_error(doc, "mx_pago_status", result.error_message)

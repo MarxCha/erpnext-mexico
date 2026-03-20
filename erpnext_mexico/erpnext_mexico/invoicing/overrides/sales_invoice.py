@@ -90,7 +90,7 @@ def stamp_sales_invoice(doc) -> None:
     4. Almacenar UUID, XML, PDF
     5. Registrar en MX CFDI Log
     """
-    from erpnext_mexico.cfdi.xml_builder import build_cfdi_from_sales_invoice, sign_cfdi, get_cfdi_xml_bytes
+    from erpnext_mexico.cfdi.xml_builder import build_cfdi_from_sales_invoice, sign_cfdi
     from erpnext_mexico.cfdi.pac_dispatcher import PACDispatcher
 
     try:
@@ -100,10 +100,10 @@ def stamp_sales_invoice(doc) -> None:
         # 2. Firmar con CSD
         comprobante = sign_cfdi(comprobante, doc.company)
 
-        # 3. Timbrar con PAC
+        # 3. Timbrar con PAC — pasar Comprobante directo (no XML string)
+        # El roundtrip Comprobante→XML→CFDI.from_string() altera la firma (error 305)
         pac = PACDispatcher.get_pac(doc.company)
-        xml_bytes = get_cfdi_xml_bytes(comprobante)
-        result = pac.stamp(xml_bytes.decode("utf-8"))
+        result = pac.stamp(comprobante)
 
         if not result.success:
             handle_stamp_error(doc, "mx_cfdi_status", result.error_message)

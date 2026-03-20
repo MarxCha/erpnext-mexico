@@ -37,21 +37,26 @@ class FinkokPAC(PACInterface):
             environment=_map_environment(environment),
         )
 
-    def stamp(self, xml_signed: str) -> StampResult:
+    def stamp(self, cfdi_signed) -> StampResult:
         """
         Timbrar CFDI firmado vía Finkok.
 
         Args:
-            xml_signed: XML del CFDI firmado con CSD como string.
+            cfdi_signed: Objeto Comprobante firmado (preferido) o XML string.
 
         Returns:
             StampResult con UUID, XML timbrado y metadatos.
         """
         try:
-            # satcfdi Finkok.stamp() espera un objeto CFDI, no un string
-            cfdi_obj = CFDI.from_string(
-                xml_signed.encode() if isinstance(xml_signed, str) else xml_signed
-            )
+            # Si recibimos el Comprobante directamente, pasarlo al PAC sin roundtrip.
+            # CFDI.from_string() altera la estructura y rompe la firma (error 305).
+            if isinstance(cfdi_signed, str):
+                cfdi_obj = CFDI.from_string(cfdi_signed.encode())
+            elif isinstance(cfdi_signed, bytes):
+                cfdi_obj = CFDI.from_string(cfdi_signed)
+            else:
+                # Es un objeto Comprobante/CFDI — pasar directo
+                cfdi_obj = cfdi_signed
             result = _call_with_timeout(self._client.stamp, cfdi_obj, timeout=30)
 
             # result es Document(document_id: str, xml: bytes)
