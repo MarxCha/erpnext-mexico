@@ -1,18 +1,18 @@
 # BLOCKERS — Blockers Activos
 
 ## BLOCKER-001: Cuentas sandbox de PACs
-**Estado**: 🟡 Pendiente (no bloquea Sprint 0, bloquea Sprint 1)
-**Impacto**: Sprint 1 no puede iniciar tests de timbrado sin esto
-**Acción requerida**: Registrar cuenta sandbox en Finkok (demo-facturacion.finkok.com) y SW Sapien (developers.sw.com.mx)
+**Estado**: 🟡 Parcialmente resuelto
+**Progreso**: Cuenta Finkok creada (marx_chavez@yahoo.com en facturacion.finkok.com, 2026-03-18).
+**Pendiente**: Configurar credenciales en MX PAC Credentials del ERPNext. Registrar SW Sapien sandbox.
 **Owner**: Marx
-**ETA**: Pre-Sprint 1 (antes de semana 4)
+**ETA**: Sesión actual o siguiente
 
-## BLOCKER-002: CSD de prueba del SAT
-**Estado**: 🔴 Pendiente (requerido en Sprint 0, bloquea inicio de Sprint 1)
-**Impacto**: No se puede firmar XML sin CSD. Sprint 0 (DocTypes/catálogos) no lo necesita, pero debe resolverse antes de Sprint 1.
-**Acción requerida**: Descargar CSD de prueba para RFC EKU9003173C9. Verificar si satcfdi los incluye en su repo.
-**Owner**: Marx / Dev
-**ETA**: Sprint 0
+## ~~BLOCKER-002: CSD de prueba del SAT~~
+**Estado**: ✅ RESUELTO (2026-03-19)
+**Resolución**: CSD de prueba descargados desde repo satcfdi (GitHub SAT-CFDI/python-satcfdi).
+RFC: EKU9003173C9 (ESCUELA KEMPER URGATE). Certificate: 30001000000400002434. Password: 12345678a.
+Ubicación: tests/fixtures/csd/eku9003173c9_csd.{cer,key,txt}. Validado con satcfdi.models.Signer.
+Válidos hasta mayo 2027.
 
 ## ~~BLOCKER-003: Catálogos SAT en formato Excel~~
 **Estado**: ✅ RESUELTO (2026-03-16)
