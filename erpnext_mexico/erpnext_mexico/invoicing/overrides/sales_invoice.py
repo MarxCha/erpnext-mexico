@@ -103,6 +103,16 @@ def stamp_sales_invoice(doc) -> None:
         # 1. Construir CFDI
         comprobante = build_cfdi_from_sales_invoice(doc)
 
+        # 1b. Agregar InformacionGlobal si el receptor es Público en General
+        customer_rfc = frappe.db.get_value("Customer", doc.customer, "mx_rfc")
+        if customer_rfc == "XAXX010101000":
+            from satcfdi.create.cfd.cfdi40 import InformacionGlobal
+            month = doc.posting_date.month if hasattr(doc.posting_date, "month") else int(str(doc.posting_date).split("-")[1])
+            year = doc.posting_date.year if hasattr(doc.posting_date, "year") else int(str(doc.posting_date).split("-")[0])
+            comprobante["InformacionGlobal"] = InformacionGlobal(
+                periodicidad="04", meses=f"{month:02d}", ano=year
+            )
+
         # 2. Firmar con CSD
         comprobante = sign_cfdi(comprobante, doc.company)
 

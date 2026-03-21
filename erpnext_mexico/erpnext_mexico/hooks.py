@@ -12,6 +12,8 @@ required_apps = ["frappe/erpnext"]
 # Static assets — CSS / JS incluidos globalmente
 # ─────────────────────────────────────────────
 app_include_css = "/assets/erpnext_mexico/css/erpnext_mexico.css"
+app_include_js = "/assets/erpnext_mexico/js/demo_login.js"
+web_include_js = "/assets/erpnext_mexico/js/demo_login.js"
 
 # ─────────────────────────────────────────────
 # Lifecycle hooks
