@@ -60,6 +60,12 @@ SMALL_CATALOGS = {
         "doctype": "MX Tax Factor Type",
         "fields": {"code": "c_TipoFactor", "description": "Descripcion"},
     },
+    "c_Banco": {
+        "doctype": "MX Bank SAT",
+        "fields": {"code": "code", "description": "description"},
+        "extra": {"razon_social": lambda r: r.get("razon_social", "")},
+        "source": "json",  # Loaded from JSON fixture, not SAT Excel
+    },
 }
 
 HEAVY_CATALOGS = {

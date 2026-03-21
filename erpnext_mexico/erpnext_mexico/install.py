@@ -761,10 +761,10 @@ def create_payroll_custom_fields():
             dict(
                 fieldname="mx_banco_sat",
                 label="Banco (Catálogo SAT)",
-                fieldtype="Data",
-                length=3,
+                fieldtype="Link",
+                options="MX Bank SAT",
                 insert_after="mx_employee_banking_section",
-                description="Clave de banco catálogo c_Banco SAT. Ej: 002=BANAMEX, 006=BANCOMEXT.",
+                description="Banco del catálogo c_Banco SAT para nómina electrónica.",
             ),
             dict(
                 fieldname="mx_cuenta_clabe",
